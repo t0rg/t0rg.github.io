@@ -4,7 +4,7 @@
 /* MODIF CSS: Ajout de 'border-color' pour le feedback vert/rouge */
 .card-container { transition: transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s; will-change: transform, opacity, border-color; touch-action: none; cursor: grab; }
 .slide-out-left { transform: translateX(-150vw) rotate(-22deg) !important; opacity: 0; }
-.slide-out-right { transform: translateX(150vw) rotate(22deg) !important; opacity: 0; }
+.slide-out-right { transform: translateX(150vw) rotate(-22deg) !important; opacity: 0; }
 
 /* CORRECTIF MAJEUR: 'position: absolute' est supprimé pour permettre un défilement normal.
   Les écrans sont maintenant des blocs flex centrés.
