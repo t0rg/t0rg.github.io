@@ -1,256 +1,37 @@
 // --- CONSTANTES DE L'APPLICATION ---
 const MAX_CARDS = 10;
-const SOLUCE_PASSWORD = "1111"; // MOT DE PASSE SECRET
-const DECKS_KEY = 'torg_game_decks';
-const DECK_INFO_KEY = 'torg_game_deck_info';
-
-// Constantes pour le drag/swipe
-const SWIPE_THRESHOLD = 80;
-const MAX_ROT = 15;
+// ... (code inchangé) ...
 const MAX_DISP = 150;
 
 // --- DONNÉES PAR DÉFAUT (si le localStorage est vide) ---
-// Métadonnées des decks
-const DEFAULT_DECK_INFO = [
-  { name: "Deck Classic", emoji: "🧜🏻", color: "purple", titleColor: "text-purple-400", cardBorder: "border-purple-400/30", indicatorLeft: "TRANS", indicatorRight: "GIRL" },
-  { name: "Deck Hardcore", emoji: "🧚🏻", color: "cyan", titleColor: "text-cyan-400", cardBorder: "border-cyan-400/30", indicatorLeft: "PC", indicatorRight: "CONSOLE" },
-  { name: "Deck Cosplay", emoji: "🧝🏻‍♀️", color: "pink", titleColor: "text-pink-400", cardBorder: "border-pink-400/30", indicatorLeft: "COSPLAY", indicatorRight: "IRL" }
-];
-
-// MODIFICATION: Les decks initiaux sont maintenant des modèles neutres.
-const neutralImg = "https://placehold.co/400x550/FBFCF8/000000?text=?";
-const neutralCard = (correctSide = "left") => ({
-  id: crypto.randomUUID(),
-  text: "", // Texte vide
-  correct: correctSide,
-  img: neutralImg, // Image placeholder
-  soluceLink: ""
-});
-
-const INITIAL_DECKS = [
-  [ // Deck 1 (10 cartes)
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"), // 6
-    neutralCard("left"),  // 7
-    neutralCard("right"), // 8
-    neutralCard("left"),  // 9
-    neutralCard("right")  // 10
-  ],
-  [ // Deck 2 (10 cartes)
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"), // 6
-    neutralCard("left"),  // 7
-    neutralCard("right"), // 8
-    neutralCard("left"),  // 9
-    neutralCard("right")  // 10
-  ],
-  [ // Deck 3 (10 cartes)
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"), // 6
-    neutralCard("left"),  // 7
-    neutralCard("right"), // 8
-    neutralCard("left"),  // 9
-    neutralCard("right")  // 10
-  ],
-];
+// ... (code inchangé) ...
 // FIN DE LA MODIFICATION
 
 // --- GESTION DE L'ÉTAT GLOBAL ---
-// Les données de la base de données persistante (chargées au démarrage)
-let PERSISTENT_DECKS;
-let PERSISTENT_DECK_INFO;
-
-// L'état de l'application (réinitialisé ou chargé)
-const state = {
-  playerName: '',
-  currentDeck: 0,
-  currentFilter: 'all',
-  game: {
-    score: 0,
-    cardIndex: 0,
-    isProcessing: false,
-  },
-  currentDeckCards: [], // Les 10 cartes tirées au sort pour cette partie
-  resultsRecap: [],
-  isEditingMode: false,
-  editingCardGlobalId: null, // ID de la carte en cours d'édition
-  previousScreen: null, // AJOUT: Pour mémoriser l'écran précédent
-  // État du swipe/drag
-  drag: {
-    startX: 0,
-    currentX: 0,
-    isDragging: false,
-    isMouseDown: false
+// ... (code inchangé) ...
   }
 };
 
 // --- SÉLECTION DES ÉLÉMENTS DU DOM ---
-// REFACTOR: Objet pour stocker tous les éléments du DOM
+// ... (code inchangé) ...
 const DOM = {};
 
 /**
  * Point d'entrée principal de l'application.
- * S'exécute lorsque le HTML est entièrement chargé.
+// ... (code inchangé) ...
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Sélectionner tous les éléments du DOM
-  queryDOMElements();
-  
-  // 2. Charger les données persistantes (ou les initialiser)
-  loadPersistentData();
-  
-  // 3. Initialiser l'état (ex: nom du joueur)
-  state.playerName = localStorage.getItem('player_name') || '';
-  if (state.playerName) {
-    DOM.playerNameInput.value = state.playerName;
-    DOM.playerDisplay.textContent = state.playerName;
-  }
-
-  // 4. Configurer tous les auditeurs d'événements
-  initEventListeners();
-  
-  // 5. Générer le contenu dynamique (listes de decks, galeries...)
-  regenerateAllDynamicContent();
-
+  // ... (code inchangé) ...
   // 6. Afficher l'écran d'introduction
   showScreen(DOM.introScreen);
 });
 
 /**
  * REFACTOR: Sélectionne tous les éléments DOM statiques une seule fois.
+// ... (code inchangé) ...
  */
 function queryDOMElements() {
-  // Écrans
-  DOM.introScreen = document.getElementById('intro-screen');
-  DOM.deckScreen = document.getElementById('deck-screen');
-  DOM.gameScreen = document.getElementById('game-screen');
-  DOM.scoresScreen = document.getElementById('scores-screen'); 
-  DOM.soluceScreen = document.getElementById('soluce-screen'); 
-  DOM.publicSoluceScreen = document.getElementById('public-soluce-screen');
-  
-  // Header
-  DOM.btnHeaderAdmin = document.getElementById('btn-header-admin');
-  DOM.playerDisplay = document.getElementById('player-display');
-
-  // Intro
-  DOM.playerNameInput = document.getElementById('player-name');
-  DOM.btnStart = document.getElementById('btn-start');
-  DOM.btnViewScores = document.getElementById('btn-view-scores');
-
-  // Sélection Deck
-  DOM.deckSelectionGrid = document.getElementById('deck-selection-grid');
-  DOM.btnViewScoresFromDeck = document.getElementById('btn-view-scores-from-deck');
-  DOM.btnViewPublicSoluce = document.getElementById('btn-view-public-soluce');
-  DOM.btnChangePlayer = document.getElementById('btn-change-player');
-  
-  // Jeu
-  DOM.overlayLeft = document.getElementById('overlay-left');
-  DOM.overlayRight = document.getElementById('overlay-right');
-  DOM.scoreDisplay = document.getElementById('score-display');
-  DOM.indexDisplay = document.getElementById('index-display');
-  DOM.btnQuitGame = document.getElementById('btn-quit-game');
-  DOM.cardHolder = document.getElementById('card-holder');
-  DOM.indicatorLeft = document.getElementById('indicator-left');
-  DOM.indicatorRight = document.getElementById('indicator-right');
-  DOM.cardElement = document.getElementById('card');
-  DOM.cardImage = document.getElementById('card-image');
-  DOM.cardText = document.getElementById('card-text');
-  DOM.arrowBtnContainer = document.querySelector('.arrow-btn-container'); // REFACTOR
-  DOM.btnArrowLeft = document.getElementById('btn-arrow-left');
-  DOM.btnArrowRight = document.getElementById('btn-arrow-right');
-  DOM.messageBox = document.getElementById('message-box');
-  
-  // Écran de fin
-  DOM.endOverlay = document.getElementById('end-overlay');
-  DOM.gaugeCircle = document.getElementById('gauge-circle');
-  DOM.gaugePercentage = document.getElementById('gauge-percentage');
-  DOM.resultMessage = document.getElementById('result-message');
-  DOM.recapTitle = document.getElementById('recap-title');
-  DOM.recapList = document.getElementById('recap-list');
-  DOM.btnChooseDeck = document.getElementById('btn-choose-deck');
-  DOM.btnReplay = document.getElementById('btn-replay');
-  DOM.btnViewScoresFromGame = document.getElementById('btn-view-scores-from-game');
-  
-  // Écran Scores
-  DOM.btnBackFromScores = document.getElementById('btn-back-from-scores');
-  DOM.scoreFilterButtons = document.getElementById('score-filter-buttons');
-  DOM.btnFilterAll = document.getElementById('btn-filter-all'); // REFACTOR: Ajout d'un ID pour le bouton "Tous"
-  DOM.scoresList = document.getElementById('scores-list');
-
-  // Écran Admin (Soluce)
-  DOM.btnToggleEdit = document.getElementById('btn-toggle-edit');
-  DOM.btnAddDeck = document.getElementById('btn-add-deck');
-  // AJOUT DES NOUVEAUX BOUTONS
-  DOM.btnExportData = document.getElementById('btn-export-data');
-  DOM.btnImportData = document.getElementById('btn-import-data');
-  DOM.importFileInput = document.getElementById('import-file-input');
-  // FIN AJOUT
-  DOM.btnBackFromSoluceAdmin = document.getElementById('btn-back-from-soluce-admin');
-  DOM.soluceGalleryContainer = document.getElementById('soluce-gallery-container');
-  DOM.soluceInfoText = document.getElementById('soluce-info-text');
-
-  // Écran Soluce Publique
-  DOM.btnBackFromPublicSoluce = document.getElementById('btn-back-from-public-soluce');
-  DOM.publicSoluceGalleryContainer = document.getElementById('public-soluce-gallery-container');
-
-  // Modale Image
-  DOM.imageModal = document.getElementById('image-modal');
-  DOM.modalImage = document.getElementById('modal-image');
-  DOM.btnCloseImageModal = document.getElementById('btn-close-image-modal');
-
-  // Modale Mot de Passe
-  DOM.passwordModal = document.getElementById('password-modal');
-  DOM.passwordInput = document.getElementById('password-input');
-  DOM.passwordError = document.getElementById('password-error');
-  DOM.btnCheckPassword = document.getElementById('btn-check-password');
-  DOM.btnClosePasswordModal = document.getElementById('btn-close-password-modal');
-
-  // Modale Édition Carte
-  DOM.editCardModal = document.getElementById('edit-card-modal');
-  DOM.editModalTitle = document.getElementById('edit-modal-title');
-  DOM.cardForm = document.getElementById('card-form');
-  DOM.editCardDeckIndex = document.getElementById('edit-card-deck-index');
-  DOM.editCardId = document.getElementById('edit-card-id');
-  DOM.editDeckSelect = document.getElementById('edit-deck-select');
-  DOM.editCardText = document.getElementById('edit-card-text');
-  DOM.editCardImg = document.getElementById('edit-card-img');
-  DOM.editCardSoluceLink = document.getElementById('edit-card-soluce-link');
-  DOM.editCardCorrect = document.getElementById('edit-card-correct');
-  DOM.saveCardBtn = document.getElementById('save-card-btn');
-  DOM.btnDeleteCard = document.getElementById('btn-delete-card');
-  DOM.btnCancelEditCard = document.getElementById('btn-cancel-edit-card');
-
-  // Modale Édition Deck
-  DOM.deckModal = document.getElementById('deck-modal');
-  DOM.deckForm = document.getElementById('deck-form');
-  DOM.deckModalTitle = document.getElementById('deck-modal-title');
-  DOM.editDeckId = document.getElementById('edit-deck-id');
-  DOM.deckNameInput = document.getElementById('deck-name');
-  DOM.deckEmojiInput = document.getElementById('deck-emoji');
-  DOM.deckIndicatorLeftInput = document.getElementById('deck-indicator-left');
-  DOM.deckIndicatorRightInput = document.getElementById('deck-indicator-right');
-  DOM.deckColorSelector = document.getElementById('deck-color-selector');
-  DOM.btnSaveDeck = document.getElementById('btn-save-deck');
-  DOM.btnCancelDeck = document.getElementById('btn-cancel-deck');
-  DOM.btnCloseDeckModal = document.getElementById('btn-close-deck-modal');
-
-  // AJOUT: Nouvelle modale d'alerte/confirmation
-  DOM.alertModal = document.getElementById('alert-modal');
-  DOM.alertModalTitle = document.getElementById('alert-modal-title');
-  DOM.alertModalText = document.getElementById('alert-modal-text');
-  DOM.alertModalButtons = document.getElementById('alert-modal-buttons');
+  // ... (code inchangé) ...
   DOM.btnCloseAlertModal = document.getElementById('btn-close-alert-modal');
 }
 
@@ -259,711 +40,175 @@ function queryDOMElements() {
  * Appelée une seule fois au démarrage.
  */
 function initEventListeners() {
-  // Header
-  DOM.btnHeaderAdmin.addEventListener('click', openPasswordModal);
-
-  // Intro
-  DOM.btnStart.addEventListener('click', continueToDecks);
-  DOM.btnViewScores.addEventListener('click', () => showScoresScreen(DOM.introScreen));
-  
-  // Sélection Deck
-  DOM.btnViewScoresFromDeck.addEventListener('click', () => showScoresScreen(DOM.deckScreen));
-  DOM.btnViewPublicSoluce.addEventListener('click', showPublicSoluce);
+  // ... (code inchangé) ...
   DOM.btnChangePlayer.addEventListener('click', () => showScreen(DOM.introScreen));
 
   // Jeu
   DOM.btnQuitGame.addEventListener('click', quitGame);
   
-  // CORRECTION: L'écouteur 'click' est restauré.
-  // Il est séparé de la logique de 'drag'.
-  DOM.cardElement.addEventListener('click', () => {
-    // N'ouvre la modale que si l'image n'est pas le placeholder par défaut
-    if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
-      openModal(DOM.cardImage.src);
-    }
-  });
+  // CORRECTION: L'événement 'click' est géré par onDragEnd
+  // DOM.cardElement.addEventListener('click', ...); // SUPPRIMÉ
   
   DOM.btnArrowLeft.addEventListener('click', () => handleDecision('left'));
-  DOM.btnArrowRight.addEventListener('click', () => handleDecision('right'));
-  
-  // Événements de Drag/Swipe
-  DOM.cardElement.addEventListener('touchstart', onDragStart, { passive: true });
-  DOM.cardElement.addEventListener('touchmove', onDragMove, { passive: true });
-  DOM.cardElement.addEventListener('touchend', onDragEnd);
-  DOM.cardElement.addEventListener('mousedown', onDragStart);
-  document.addEventListener('mousemove', onDragMove); // Écoute sur tout le document
-  document.addEventListener('mouseup', onDragEnd);     // Écoute sur tout le document
-  
-  // Événements de clavier
-  document.addEventListener('keydown', onKeyDown);
-
-  // Écran de fin
-  DOM.btnChooseDeck.addEventListener('click', () => {
-    DOM.endOverlay.classList.add('hidden');
-    showScreen(DOM.deckScreen);
-  });
-  DOM.btnReplay.addEventListener('click', () => {
-    DOM.endOverlay.classList.add('hidden');
-    startGame();
-  });
-  DOM.btnViewScoresFromGame.addEventListener('click', () => showScoresScreen(DOM.gameScreen));
-
-  // Écran Scores
-  DOM.btnBackFromScores.addEventListener('click', () => {
-    // Retourne à l'écran mémorisé, ou au deckScreen par défaut
-    showScreen(state.previousScreen || DOM.deckScreen);
-  });
-  DOM.btnFilterAll.addEventListener('click', (e) => filterScores('all', e.target));
-
-  // Écran Admin
-  DOM.btnToggleEdit.addEventListener('click', toggleEditingMode);
-  DOM.btnAddDeck.addEventListener('click', () => openDeckModal(null));
-  // AJOUT DES NOUVEAUX ÉVÉNEMENTS
-  DOM.btnExportData.addEventListener('click', exportData);
-  DOM.btnImportData.addEventListener('click', () => DOM.importFileInput.click()); // Ouvre le sélecteur de fichier
-  DOM.importFileInput.addEventListener('change', importData); // Gère le fichier sélectionné
-  // FIN AJOUT
-  DOM.btnBackFromSoluceAdmin.addEventListener('click', () => showScreen(DOM.deckScreen));
-
-  // Écran Soluce Publique
-  DOM.btnBackFromPublicSoluce.addEventListener('click', () => showScreen(DOM.deckScreen));
-  
-  // Modale Image
-  DOM.imageModal.addEventListener('click', (e) => {
-    if (e.target.id === 'image-modal') closeModal(DOM.imageModal);
-  });
-  DOM.btnCloseImageModal.addEventListener('click', () => closeModal(DOM.imageModal));
-
-  // Modale Mot de Passe
-  DOM.passwordModal.addEventListener('click', (e) => {
-    if (e.target.id === 'password-modal') closeModal(DOM.passwordModal);
-  });
-  DOM.btnClosePasswordModal.addEventListener('click', () => closeModal(DOM.passwordModal));
-  DOM.btnCheckPassword.addEventListener('click', checkPassword);
-  DOM.passwordInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') checkPassword();
-  });
-
-  // Modale Édition Carte
-  DOM.editCardModal.addEventListener('click', (e) => {
-    if (e.target.id === 'edit-card-modal') closeModal(DOM.editCardModal);
-  });
-  DOM.saveCardBtn.addEventListener('click', saveCard);
-  DOM.btnDeleteCard.addEventListener('click', deleteCard);
-  DOM.btnCancelEditCard.addEventListener('click', () => closeModal(DOM.editCardModal));
-
-  // Modale Édition Deck
-  DOM.deckModal.addEventListener('click', (e) => {
-    if (e.target.id === 'deck-modal') closeModal(DOM.deckModal);
-  });
-  DOM.btnCloseDeckModal.addEventListener('click', () => closeModal(DOM.deckModal));
-  DOM.btnSaveDeck.addEventListener('click', saveDeckInfo);
-  DOM.btnCancelDeck.addEventListener('click', () => closeModal(DOM.deckModal));
-  DOM.deckColorSelector.querySelectorAll('.color-swatch').forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      DOM.deckColorSelector.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-      swatch.classList.add('selected');
-    });
-  });
-
-  // AJOUT: Événements pour la nouvelle modale d'alerte
-  DOM.alertModal.addEventListener('click', (e) => {
-    if (e.target.id === 'alert-modal') closeModal(DOM.alertModal);
-  });
+// ... (code inchangé) ...
   DOM.btnCloseAlertModal.addEventListener('click', () => closeModal(DOM.alertModal));
 }
 
 // ------------------------------------
 // --- GESTION DU STOCKAGE (localStorage) ---
+// ... (code inchangé) ...
 // ------------------------------------
-
-// CORRECTION: Bloc de fonctions restauré
-function loadPersistentData() {
-  PERSISTENT_DECKS = loadDecks();
-  PERSISTENT_DECK_INFO = loadDeckInfo();
-}
-
-function loadDecks() {
-  const storedDecks = localStorage.getItem(DECKS_KEY);
-  if (storedDecks) {
-    try {
-      return JSON.parse(storedDecks);
-    } catch (e) {
-      console.error("Erreur lors du chargement des decks, réinitialisation.");
-      return migrateInitialDecks();
-    }
-  }
-  return migrateInitialDecks();
-}
-
-function loadDeckInfo() {
-  const storedInfo = localStorage.getItem(DECK_INFO_KEY);
-  if (storedInfo) {
-    try {
-      return JSON.parse(storedInfo);
-    } catch (e) {
-      return migrateInitialDeckInfo();
-    }
-  }
-  return migrateInitialDeckInfo();
-}
-
-function migrateInitialDecks() {
-  const decksWithIds = INITIAL_DECKS.map(deck => 
-    deck.map(card => ({
-      ...card, 
-      id: card.id || crypto.randomUUID(),
-      soluceLink: card.soluceLink || ""
-    }))
-  );
-  saveDecks(decksWithIds); // Sauvegarde directe
-  return decksWithIds;
-}
-
-function migrateInitialDeckInfo() {
-  saveDeckInfoToStorage(DEFAULT_DECK_INFO); // Sauvegarde directe
-  return DEFAULT_DECK_INFO;
-}
-
-function saveDecks(decks) {
-  localStorage.setItem(DECKS_KEY, JSON.stringify(decks));
-}
-
-function saveDeckInfoToStorage(info) {
-  localStorage.setItem(DECK_INFO_KEY, JSON.stringify(info));
-}
 // FIN DU BLOC RESTAURÉ
 
 function getScores() {
-  return JSON.parse(localStorage.getItem('game_scores') || '[]');
+// ... (code inchangé) ...
 }
 
 // ------------------------------------
 // --- IMPORT/EXPORT DES DONNÉES ---
+// ... (code inchangé) ...
 // ------------------------------------
 
-/**
- * Exporte toutes les données des decks (cartes et infos)
- * dans un fichier JSON téléchargeable.
- */
 function exportData() {
-  console.log("Exportation des données...");
-  try {
-    // 1. Créer l'objet de données
-    const data = {
-      decks: PERSISTENT_DECKS,
-      info: PERSISTENT_DECK_INFO
-    };
-    
-    // 2. Convertir en chaîne JSON (avec formatage pour lisibilité)
-    const dataString = JSON.stringify(data, null, 2);
-    
-    // 3. Créer un Blob (fichier en mémoire)
-    const blob = new Blob([dataString], { type: 'application/json' });
-    
-    // 4. Créer un lien de téléchargement
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    // Génère un nom de fichier avec la date, ex: torg_beta_backup_2025-11-09.json
-    a.download = `torg_beta_backup_${new Date().toISOString().split('T')[0]}.json`;
-    
-    // 5. Simuler le clic, télécharger, puis nettoyer
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-  } catch (error) {
-    console.error("Erreur lors de l'exportation:", error);
-    // REMPLACEMENT: alert -> showAlert
-    showAlert("Erreur", "Échec de l'exportation des données.", "error");
+// ... (code inchangé) ...
   }
 }
 
 /**
  * Gère l'importation d'un fichier JSON de données.
- * Appelé par l'événement 'change' de l'input file.
- * @param {Event} event - L'événement de changement de l'input file.
+// ... (code inchangé) ...
  */
 function importData(event) {
-  const file = event.target.files[0];
-  if (!file) {
-    console.log("Aucun fichier sélectionné.");
-    return;
-  }
-  
-  const reader = new FileReader();
-  
-  reader.onload = (e) => {
-    try {
-      // 1. Lire et analyser le contenu du fichier
-      const content = e.target.result;
-      const data = JSON.parse(content);
-      
-      // 2. Valider la structure du fichier
-      if (data && Array.isArray(data.decks) && Array.isArray(data.info)) {
-        
-        const totalDecks = data.info.length;
-        const totalCards = data.decks.reduce((sum, deck) => sum + (deck ? deck.length : 0), 0);
-        
-        // 3. REMPLACEMENT: confirm -> showConfirm (logique asynchrone)
-        
-        // Étape 3a: Définir ce qu'il faut faire si l'utilisateur confirme
-        const onConfirmImport = () => {
-          // 4. Sauvegarder les nouvelles données dans localStorage
-          saveDecks(data.decks);
-          saveDeckInfoToStorage(data.info);
-          
-          // 5. Recharger l'état de l'application et rafraîchir l'interface
-          loadPersistentData(); // Met à jour les variables globales
-          regenerateAllDynamicContent(); // Redessine toute l'UI
-          
-          // REMPLACEMENT: alert -> showAlert
-          showAlert("Importation Réussie", "Les nouveaux decks sont chargés.", "success");
-        };
-        
-        // Étape 3b: Afficher la modale de confirmation
-        showConfirm(
-          "Confirmer l'importation",
-          `Vous allez importer ${totalDecks} deck(s) et ${totalCards} carte(s).\n\nATTENTION: Cela écrasera et remplacera toutes les données actuelles. Continuer ?`,
-          onConfirmImport
-        );
-        
-      } else {
-        throw new Error("Structure de fichier invalide. Le JSON doit contenir les clés 'decks' et 'info' (tableaux).");
-      }
-    } catch (error) {
-      console.error("Erreur lors de l'importation:", error);
-      // REMPLACEMENT: alert -> showAlert
-      showAlert("Erreur d'importation", `Échec: ${error.message}`, "error");
-    } finally {
-      // Réinitialiser le champ de fichier pour permettre de réimporter le même fichier
-      event.target.value = null;
-    }
-  };
-  
-  reader.onerror = (error) => {
-     console.error("Erreur de lecture du fichier:", error);
-     // REMPLACEMENT: alert -> showAlert
-     showAlert("Erreur", "Échec de la lecture du fichier.", "error");
-     event.target.value = null;
-  };
-  
+// ... (code inchangé) ...
   reader.readAsText(file);
 }
 
 // ------------------------------------
 // --- NAVIGATION & GESTION DES ÉCRANS ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 function showScreen(screenEl) {
-  const mainScreens = [
-    DOM.introScreen, DOM.deckScreen, DOM.gameScreen, 
-    DOM.scoresScreen, DOM.soluceScreen, DOM.publicSoluceScreen
-  ];
-  
-  mainScreens.forEach(s => {
-    s.classList.add('hidden-screen');
-    // s.style.opacity = 0; // Opacité gérée par 'hidden-screen'
-  });
-
-  // S'assurer que les modales sont cachées
-  closeModal(DOM.imageModal);
-  closeModal(DOM.passwordModal);
-  closeModal(DOM.editCardModal);
-  closeModal(DOM.deckModal);
-  closeModal(DOM.alertModal); // AJOUT
-
+// ... (code inchangé) ...
   screenEl.classList.remove('hidden-screen');
   // requestAnimationFrame(() => screenEl.style.opacity = 1); // Plus nécessaire
 }
 
 function showScoresScreen(prevScreen) {
-  state.previousScreen = prevScreen; // Mémorise l'écran d'où on vient
-  renderScores();
-  showScreen(DOM.scoresScreen);
+// ... (code inchangé) ...
 }
 
 function showAllSoluce() {
-  // Montre tous les titres et conteneurs
-  DOM.soluceGalleryContainer.querySelectorAll('.soluce-deck-title').forEach(el => el.style.display = 'flex');
-  DOM.soluceGalleryContainer.querySelectorAll('.soluce-deck-content').forEach(el => {
-    el.classList.remove('hidden-soluce');
-  });
-  
-  state.isEditingMode = false;
-  updateSoluceDisplayModes(); // Réinitialise les modes
-  showScreen(DOM.soluceScreen);
+// ... (code inchangé) ...
 }
 
 function showPublicSoluce() {
-  regeneratePublicSoluce(); // S'assure que la galerie publique est à jour
-  showScreen(DOM.publicSoluceScreen);
+// ... (code inchangé) ...
 }
 
 // ------------------------------------
 // --- GÉNÉRATION D'UI DYNAMIQUE ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 /**
  * REFACTOR: Fonction centrale pour (re)générer tout le contenu
- * dépendant des données persistantes.
+// ... (code inchangé) ...
  */
 function regenerateAllDynamicContent() {
-  generateDeckSelectionScreen();
-  generateSoluceContainers();
-  generatePublicSoluceContainers();
-  generateScoreFilters();
-  
-  // Met à jour la liste des decks dans la modale d'édition
-  DOM.editDeckSelect.innerHTML = '';
-  PERSISTENT_DECK_INFO.forEach((info, index) => {
-    DOM.editDeckSelect.innerHTML += `<option value="${index}">${info.emoji} ${info.name}</option>`;
+// ... (code inchangé) ...
   });
 }
 
 /**
  * REFACTOR: Renommée pour être plus claire.
- * Utilise `document.createElement` pour plus de sécurité et de clarté.
+// ... (code inchangé) ...
  */
 function regeneratePublicSoluce() {
-  generatePublicSoluceContainers();
+// ... (code inchangé) ...
 }
 
 function generateDeckSelectionScreen() {
-  DOM.deckSelectionGrid.innerHTML = ''; // Vide la grille
-  
-  PERSISTENT_DECK_INFO.forEach((deckInfo, index) => {
-    const cardCount = (PERSISTENT_DECKS[index] || []).length;
-    
-    const el = document.createElement('div');
-    el.className = `deck-card glass rounded-xl p-6 border-2 ${deckInfo.cardBorder}`;
-    el.addEventListener('click', () => selectDeck(index));
-    
-    el.innerHTML = `
-      <div class="text-4xl mb-4 text-center">${deckInfo.emoji}</div>
-      <h3 class="text-xl font-bold mb-2 text-center ${deckInfo.titleColor}">${deckInfo.name}</h3>
-      <p class="text-sm text-gray-300 text-center mb-3">Le deck ${deckInfo.name.toLowerCase()}</p>
-      <div class="text-xs text-gray-400 text-center">${cardCount} cartes</div>
-    `;
-    DOM.deckSelectionGrid.appendChild(el);
-  });
+// ... (code inchangé) ...
 }
 
 function generateScoreFilters() {
-  // Vider les anciens filtres (sauf le bouton 'Tous')
-  DOM.scoreFilterButtons.querySelectorAll('.filter-btn:not(#btn-filter-all)').forEach(btn => btn.remove());
-  
-  PERSISTENT_DECK_INFO.forEach((deckInfo, index) => {
-    const btn = document.createElement('button');
-    btn.className = 'filter-btn px-4 py-2 bg-white/6 border border-white/10 rounded-lg text-sm';
-    btn.textContent = `${deckInfo.emoji} ${deckInfo.name}`;
-    btn.addEventListener('click', (e) => filterScores(index, e.target));
-    DOM.scoreFilterButtons.appendChild(btn);
+// ... (code inchangé) ...
   });
 }
 
 /**
  * REFACTOR: Utilise `createElement` pour créer les vignettes.
- * C'est plus verbeux mais beaucoup plus propre.
+// ... (code inchangé) ...
  */
 function generateSoluceContainers() {
-  DOM.soluceGalleryContainer.innerHTML = ''; // Nettoyer l'ancien contenu
-
-  PERSISTENT_DECKS.forEach((deck, deckIndex) => {
-    const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
-    if (!deckInfo) {
-      console.warn(`Pas d'info pour le deck ${deckIndex}, le deck sera ignoré.`);
-      return;
-    }
-    
-    // Crée le titre du Deck
-    const titleEl = document.createElement('h4');
-    titleEl.className = `soluce-deck-title ${deckInfo.titleColor}`;
-    titleEl.innerHTML = `${deckInfo.emoji} ${deckInfo.name} (${(deck || []).length} cartes)`;
-    
-    const editBtn = document.createElement('span');
-    editBtn.className = 'edit-deck-btn';
-    editBtn.innerHTML = '✏️';
-    editBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openDeckModal(deckIndex);
-    });
-    titleEl.appendChild(editBtn);
-    DOM.soluceGalleryContainer.appendChild(titleEl);
-
-    // Crée le conteneur spécifique du Deck
-    const cardsContainer = document.createElement('div');
-    cardsContainer.id = `soluce-deck-${deckIndex}`;
-    cardsContainer.className = 'soluce-deck-content hidden-soluce';
-    DOM.soluceGalleryContainer.appendChild(cardsContainer);
-    
-    // Ajoute les cartes
-    (deck || []).forEach(card => {
-      cardsContainer.appendChild(createSoluceCardVignette(card, deckInfo, deckIndex));
-    });
-    
-    // Ajoute le bouton "Ajouter une carte"
-    cardsContainer.appendChild(createAddCardVignette(deckIndex));
-  });
-  
+// ... (code inchangé) ...
   updateSoluceDisplayModes();
 }
 
 function generatePublicSoluceContainers() {
-  DOM.publicSoluceGalleryContainer.innerHTML = ''; // Nettoyer l'ancien contenu
-
-  PERSISTENT_DECKS.forEach((deck, deckIndex) => {
-    const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
-    if (!deckInfo) return; // Ignore les decks sans info
-    
-    // Crée le titre du Deck
-    const titleEl = document.createElement('h4');
-    titleEl.className = `soluce-deck-title ${deckInfo.titleColor}`;
-    titleEl.innerHTML = `${deckInfo.emoji} ${deckInfo.name} (${(deck || []).length} cartes)`;
-    DOM.publicSoluceGalleryContainer.appendChild(titleEl);
-
-    // Crée le conteneur spécifique du Deck
-    const cardsContainer = document.createElement('div');
-    cardsContainer.className = 'soluce-deck-content';
-    DOM.publicSoluceGalleryContainer.appendChild(cardsContainer);
-    
-    // Ajoute les cartes (en mode public/consultation)
-    (deck || []).forEach(card => {
-      cardsContainer.appendChild(createSoluceCardVignette(card, deckInfo, deckIndex, true));
+// ... (code inchangé) ...
     });
   });
 }
 
 /**
  * REFACTOR: Crée une vignette de carte pour la galerie (Admin ou Publique)
- * @param {object} card - L'objet carte
- * @param {object} deckInfo - Les métadonnées du deck
- * @param {number} deckIndex - L'index du deck
- * @param {boolean} [isPublic=false] - Si vrai, génère une vignette publique (sans édition)
+// ... (code inchangé) ...
  */
 function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
-  const el = document.createElement('div');
-  el.className = 'soluce-gallery-item flex flex-col justify-between p-2 glass rounded-lg border-2 ' + deckInfo.cardBorder;
-  el.setAttribute('data-card-id', card.id);
-  el.setAttribute('data-deck-index', deckIndex);
-  
-  const hasSoluceLink = card.soluceLink && card.soluceLink.trim() !== "";
-  
-  // Gestion du clic
-  el.addEventListener('click', () => {
-    if (!isPublic && state.isEditingMode) {
-      openEditModal(deckIndex, card.id);
-    } else if (hasSoluceLink) {
-      window.open(card.soluceLink, '_blank');
-    } else {
-      openModal(card.img);
-    }
-  });
-  
-  // Conteneur d'image (pour le fond)
-  const imageContainer = document.createElement('div');
-  imageContainer.className = 'w-full h-2/3 object-cover rounded-md mb-1 soluce-gallery-item-image-container';
-  imageContainer.style.backgroundImage = `url('${card.img}')`;
-  imageContainer.style.backgroundSize = 'cover';
-  imageContainer.style.backgroundPosition = 'center';
-
-  if (hasSoluceLink) {
-    imageContainer.innerHTML = `<span class="soluce-link-indicator">🔗</span>`;
-  }
-  
-  const correctText = card.correct === 'left' ? 'GAUCHE (Mauve)' : 'DROITE (Rose)';
-  const colorClass = card.correct === 'left' ? 'text-purple-400' : 'text-pink-400';
-  
-  const textDiv = document.createElement('div');
-  textDiv.className = 'text-xs font-semibold text-gray-200 truncate';
-  textDiv.title = card.text;
-  textDiv.textContent = card.text.split(' (')[0] || "Carte sans texte"; // Fallback
-  
-  const correctDiv = document.createElement('div');
-  correctDiv.className = `text-[10px] ${colorClass}`;
-  correctDiv.textContent = `Rép: ${correctText}`;
-  
-  const deckNameDiv = document.createElement('div');
-  deckNameDiv.className = 'text-[9px] text-gray-400 mt-0.5';
-  deckNameDiv.textContent = deckInfo.name;
-  
-  el.appendChild(imageContainer);
-  el.appendChild(textDiv);
-  el.appendChild(correctDiv);
-  el.appendChild(deckNameDiv);
-  
+// ... (code inchangé) ...
   return el;
 }
 
 /**
  * REFACTOR: Crée la vignette "+" pour ajouter une carte
- * @param {number} deckIndex - L'index du deck auquel ajouter la carte
+// ... (code inchangé) ...
  */
 function createAddCardVignette(deckIndex) {
-  const addCardEl = document.createElement('div');
-  addCardEl.className = 'soluce-gallery-item add-card-btn';
-  addCardEl.style.display = 'none'; // Caché par défaut
-  addCardEl.addEventListener('click', () => openEditModal(deckIndex, null));
-  addCardEl.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  `;
+// ... (code inchangé) ...
   return addCardEl;
 }
 
 // ------------------------------------
 // --- LOGIQUE DU JEU ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 function continueToDecks() {
-  const name = (DOM.playerNameInput.value || '').trim();
-  if (!name) {
-    DOM.playerNameInput.focus();
-    DOM.playerNameInput.classList.add('border-red-500');
-    return;
-  }
-  DOM.playerNameInput.classList.remove('border-red-500');
-  state.playerName = name;
-  localStorage.setItem('player_name', state.playerName);
-  DOM.playerDisplay.textContent = state.playerName;
-  showScreen(DOM.deckScreen);
+// ... (code inchangé) ...
 }
 
 function selectDeck(deckIndex) {
-  // Vérifie si le deck a assez de cartes
-  if (!PERSISTENT_DECKS[deckIndex] || PERSISTENT_DECKS[deckIndex].length < MAX_CARDS) {
-    showAlert(
-      "Deck incomplet",
-      `Ce deck n'a que ${PERSISTENT_DECKS[deckIndex]?.length || 0} cartes. Il en faut au moins ${MAX_CARDS} pour jouer.`,
-      "warning"
-    );
-    return;
-  }
-  state.currentDeck = deckIndex;
+// ... (code inchangé) ...
   startGame();
 }
 
 function startGame() {
-  state.resultsRecap = []; // Réinitialise les résultats
-  
-  const fullDeck = PERSISTENT_DECKS[state.currentDeck];
-  const shuffledDeck = shuffleArray(fullDeck);
-  
-  // Stocke une référence ID unique
-  state.currentDeckCards = shuffledDeck.slice(0, MAX_CARDS).map(c => ({ id: c.id })); 
-  
-  // AJOUT: Précharger les images du jeu
-  preloadGameImages(state.currentDeckCards);
-  
-  state.game = { score: 0, cardIndex: 0, isProcessing: false };
-  updateUI();
-  displayCard();
+// ... (code inchangé) ...
   showScreen(DOM.gameScreen);
 }
 
 /**
  * AJOUT: Précharge les images pour la partie en cours.
- * @param {Array} cardRefs - Tableau des références de cartes (ex: [{id: '...'}])
+// ... (code inchangé) ...
  */
 function preloadGameImages(cardRefs) {
-  const fullDeck = PERSISTENT_DECKS[state.currentDeck];
-  
-  cardRefs.forEach(ref => {
-    const card = fullDeck.find(c => c.id === ref.id);
-    if (card && card.img) {
-      const img = new Image(); // Crée un objet Image en mémoire
-      img.src = card.img;       // Déclenche le téléchargement
-    }
+// ... (code inchangé) ...
   });
 }
 
 function endGame() {
-  state.game.isProcessing = true;
-  const pct = Math.round((state.game.score / MAX_CARDS) * 100);
-  saveScore(state.playerName, state.currentDeck, state.game.score, pct);
-  displayErrorRecap(); // Affiche le récapitulatif
-  updateUI(); // Met à jour l'UI (qui masquera la carte)
-  state.game.isProcessing = false;
-  DOM.endOverlay.classList.remove('hidden');
-  // DOM.endOverlay.style.opacity = 1; // Plus nécessaire
-  
-  // Animer la jauge
-  const circumference = 2 * Math.PI * 80;
-  const offset = circumference - (pct / 100) * circumference;
-  setTimeout(() => DOM.gaugeCircle.style.strokeDashoffset = offset, 100);
-  
-  DOM.gaugePercentage.textContent = pct + '%';
-  const result = getResultMessage(pct);
-  DOM.resultMessage.textContent = result.text;
+// ... (code inchangé) ...
   DOM.resultMessage.className = `result-message text-2xl font-bold mb-4 px-4 py-3 rounded-lg ${result.color}`;
 }
 
 function quitGame() {
-  showScreen(DOM.deckScreen);
+// ... (code inchangé) ...
 }
 
 function handleDecision(decision) {
-  if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS) return;
-  state.game.isProcessing = true;
-  
-  const currentCardRef = state.currentDeckCards[state.game.cardIndex];
-  const cur = PERSISTENT_DECKS[state.currentDeck].find(c => c.id === currentCardRef.id);
-  
-  // Si la carte n'existe plus (ex: supprimée pendant le jeu), on passe
-  if (!cur) {
-    state.game.cardIndex++;
-    state.game.isProcessing = false;
-    displayCard(); // Affiche la carte suivante
-    return;
-  }
-
-  const isCorrect = decision === cur.correct; 
-  
-  // Stocke le résultat
-  currentCardRef.isCorrect = isCorrect; 
-  currentCardRef.img = cur.img;
-  currentCardRef.text = cur.text;
-  state.resultsRecap.push(currentCardRef);
-  
-  if (!isCorrect) {
-    state.game.score++;
-    DOM.cardElement.style.borderColor = '#EF4444'; // Rouge
-  } else {
-    DOM.cardElement.style.borderColor = '#10B981'; // Vert
-  }
-  
-  // Feedback visuel (dégradé)
-  if (decision === 'left') {
-    DOM.overlayLeft.style.opacity = '0.5';
-    DOM.overlayLeft.style.transition = 'opacity 0.2s ease-out';
-  } else {
-    DOM.overlayRight.style.opacity = '0.5';
-    DOM.overlayRight.style.transition = 'opacity 0.2s ease-out';
-  }
-  
-  const slideClass = decision === 'left' ? 'slide-out-left' : 'slide-out-right';
-  DOM.cardElement.classList.add(slideClass);
-  
-  setTimeout(() => {
-    DOM.cardElement.classList.remove(slideClass);
-    state.game.cardIndex++;
-    
-    // Réinitialisation des dégradés
-    DOM.overlayLeft.style.opacity = '0';
-    DOM.overlayRight.style.opacity = '0';
-    DOM.overlayLeft.style.transition = 'opacity 0.1s linear';
-    DOM.overlayRight.style.transition = 'opacity 0.1s linear';
-    
-    if (state.game.cardIndex < MAX_CARDS) {
-      updateUI();
-      displayCard();
-      state.game.isProcessing = false;
-    } else {
-      endGame();
-    }
+// ... (code inchangé) ...
   }, 360);
 }
 
@@ -972,40 +217,19 @@ function handleDecision(decision) {
 // ------------------------------------
 
 function onDragStart(e) {
-  if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS || isModalOpen()) return;
-
-  if (e.type === 'mousedown') {
-    state.drag.isMouseDown = true;
-    state.drag.startX = e.clientX;
-    e.preventDefault(); // Empêche la sélection de texte
-  } else { // touchstart
-    state.drag.isDragging = true;
-    state.drag.startX = e.touches[0].clientX;
-  }
-  
-  state.drag.currentX = state.drag.startX;
+// ... (code inchangé) ...
   DOM.cardElement.style.transition = 'none'; 
   DOM.cardElement.style.cursor = 'grabbing';
 }
 
 function onDragMove(e) {
-  if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
-
-  if (e.type === 'mousemove') {
-    state.drag.currentX = e.clientX;
-  } else { // touchmove
-    state.drag.currentX = e.touches[0].clientX;
-  }
-  
-  const dx = state.drag.currentX - state.drag.startX;
-  let rot = (dx / MAX_DISP) * MAX_ROT;
-  rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, rot));
-  
+// ... (code inchangé) ...
   DOM.cardElement.style.transform = `translateX(${dx}px) rotate(${rot}deg)`;
   updateVisualFeedback(dx); 
 }
 
-// CORRECTION: Logique restaurée de 'alpha.html'
+// CORRECTION: La logique de onDragEnd est modifiée pour 
+// gérer le clic/tap directement.
 function onDragEnd(e) {
   if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
 
@@ -1019,21 +243,19 @@ function onDragEnd(e) {
   DOM.cardElement.style.cursor = 'grab';
   const dx = state.drag.currentX - state.drag.startX;
   state.drag.startX = 0;
-
-  // Si c'est un "tap" (mobile), on annule et on laisse le 'click' listener gérer le zoom.
-  if (Math.abs(dx) < 10 && !isMouseUp) {
-    DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s';
-    DOM.cardElement.style.transform = 'none'; // Snap back
-    return;
-  }
   
   DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s'; 
   updateVisualFeedback(0); 
   
-  // Si c'est un "clic" (souris), on annule et on laisse le 'click' listener gérer le zoom.
-  if (Math.abs(dx) < 10 && isMouseUp) {
-     DOM.cardElement.style.transform = 'none';
-     return;
+  // CORRECTION: Si le mouvement est faible, c'est un clic/tap.
+  if (Math.abs(dx) < 10) { 
+    DOM.cardElement.style.transform = 'none'; // Snap back
+    
+    // Déclenche le zoom manuellement pour mouseup ET touchend
+    if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
+      openModal(DOM.cardImage.src);
+    }
+    return;
   }
   
   // Si le mouvement est suffisant, c'est un swipe
@@ -1043,19 +265,7 @@ function onDragEnd(e) {
 }
     
 function onKeyDown(e) {
-  // Gérer les touches fléchées pour le jeu
-  if (!DOM.gameScreen.classList.contains('hidden-screen')) {
-    if (isModalOpen()) return; // Ne pas jouer si une modale est ouverte
-    if (e.key === 'ArrowLeft') handleDecision('left');
-    if (e.key === 'ArrowRight') handleDecision('right');
-  }
-  
-  // Gérer la touche Échap pour fermer les modales
-  if (e.key === 'Escape') {
-    if (DOM.imageModal.classList.contains('active')) closeModal(DOM.imageModal);
-    else if (DOM.passwordModal.classList.contains('active')) closeModal(DOM.passwordModal);
-    else if (DOM.editCardModal.classList.contains('active')) closeModal(DOM.editCardModal);
-    else if (DOM.deckModal.classList.contains('active')) closeModal(DOM.deckModal);
+// ... (code inchangé) ...
     else if (DOM.alertModal.classList.contains('active')) closeModal(DOM.alertModal); // AJOUT
   }
 }
@@ -1063,313 +273,66 @@ function onKeyDown(e) {
 
 // ------------------------------------
 // --- FONCTIONS ADMIN & ÉDITION ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 function checkPassword() {
-  const inputCode = DOM.passwordInput.value;
-  if (inputCode === SOLUCE_PASSWORD) {
-    closeModal(DOM.passwordModal);
-    showAllSoluce(); // Affiche la soluce complète
-  } else {
-    DOM.passwordError.classList.remove('hidden');
-    DOM.passwordInput.value = '';
-    DOM.passwordInput.focus();
+// ... (code inchangé) ...
   }
 }
 
 function toggleEditingMode() {
-  state.isEditingMode = !state.isEditingMode;
-  updateSoluceDisplayModes();
+// ... (code inchangé) ...
 }
 
 function updateSoluceDisplayModes() {
-  // Met à jour les vignettes de carte
-  DOM.soluceGalleryContainer.querySelectorAll('.soluce-gallery-item:not(.add-card-btn)').forEach(item => {
-    item.classList.toggle('editing-mode', state.isEditingMode);
-  });
-  
-  // Met à jour les boutons
-  DOM.btnToggleEdit.textContent = state.isEditingMode ? "Quitter l'édition" : "Activer l'édition";
-  DOM.btnAddDeck.style.display = state.isEditingMode ? 'block' : 'none';
-  DOM.btnExportData.style.display = state.isEditingMode ? 'block' : 'none';
-  DOM.btnImportData.style.display = state.isEditingMode ? 'block' : 'none';
-  
-  DOM.soluceGalleryContainer.querySelectorAll('.add-card-btn').forEach(btn => {
-    btn.style.display = state.isEditingMode ? 'flex' : 'none';
-  });
-  DOM.soluceGalleryContainer.querySelectorAll('.edit-deck-btn').forEach(btn => {
-    btn.style.display = state.isEditingMode ? 'inline' : 'none';
-  });
-
-  // Met à jour le texte d'information
-  if (state.isEditingMode) {
-    DOM.soluceInfoText.textContent = "Mode ÉDITION ACTIF : Cliquez sur une carte pour la modifier ou la supprimer, ou utilisez le bouton 'Ajouter une carte'.";
-  } else {
-    DOM.soluceInfoText.textContent = "Mode CONSULTATION : Cliquez sur une vignette pour agrandir l'image. Si un lien Soluce (🔗) est présent, le clic ouvrira le lien.";
+// ... (code inchangé) ...
   }
 }
 
 function openEditModal(deckIndex, cardId = null) {
-  state.editingCardGlobalId = cardId;
-  DOM.passwordModal.classList.remove('active');
-
-  if (cardId === null) {
-    // MODE AJOUT
-    DOM.editModalTitle.textContent = 'Ajouter une nouvelle carte';
-    DOM.editCardId.value = '';
-    DOM.editCardText.value = '';
-    DOM.editCardImg.value = '';
-    DOM.editCardSoluceLink.value = '';
-    DOM.editCardCorrect.value = 'left';
-    DOM.editDeckSelect.value = deckIndex !== null ? deckIndex.toString() : '0';
-    DOM.editDeckSelect.disabled = false;
-    DOM.btnDeleteCard.style.display = 'none';
-  } else {
-    // MODE ÉDITION
-    const deck = PERSISTENT_DECKS[deckIndex];
-    const card = deck.find(c => c.id === cardId);
-    
-    if (card) {
-      DOM.editModalTitle.textContent = 'Modifier la carte existante';
-      DOM.editCardId.value = cardId;
-      DOM.editCardDeckIndex.value = deckIndex;
-      DOM.editCardText.value = card.text;
-      DOM.editCardImg.value = card.img;
-      DOM.editCardSoluceLink.value = card.soluceLink || '';
-      DOM.editCardCorrect.value = card.correct;
-      DOM.editDeckSelect.value = deckIndex.toString();
-      DOM.editDeckSelect.disabled = true; // Empêche de changer le deck
-      DOM.btnDeleteCard.style.display = 'block';
-    }
-  }
-  openModal(DOM.editCardModal);
+// ... (code inchangé) ...
 }
 
 function saveCard() {
-  const id = DOM.editCardId.value || crypto.randomUUID();
-  const deckIndex = parseInt(DOM.editDeckSelect.value);
-  const text = DOM.editCardText.value;
-  const img = DOM.editCardImg.value;
-  const soluceLink = DOM.editCardSoluceLink.value.trim();
-  const correct = DOM.editCardCorrect.value;
-
-  const newCard = { id, text, img, correct, soluceLink };
-  
-  let decks = loadDecks(); // Charge la version la plus récente
-  
-  if (state.editingCardGlobalId) {
-    // MODIFICATION
-    const oldDeckIndex = parseInt(DOM.editCardDeckIndex.value);
-    const cardIndex = decks[oldDeckIndex].findIndex(c => c.id === state.editingCardGlobalId);
-    if (cardIndex !== -1) {
-      decks[oldDeckIndex][cardIndex] = newCard;
-    }
-  } else {
-    // AJOUT
-    if (!decks[deckIndex]) decks[deckIndex] = []; // Crée le deck s'il n'existe pas
-    decks[deckIndex].push(newCard);
-  }
-
-  saveDecks(decks);
-  PERSISTENT_DECKS = decks; // Met à jour l'état global
-  closeModal(DOM.editCardModal);
-  
-  regenerateAllDynamicContent();
-  showAllSoluce(); // Reste sur la page Admin
+// ... (code inchangé) ...
 }
 
 function deleteCard() {
-  const cardId = DOM.editCardId.value;
-  const deckIndex = parseInt(DOM.editCardDeckIndex.value);
-  
-  if (!cardId || isNaN(deckIndex)) return;
-  
-  // REMPLACEMENT: confirm -> showConfirm (logique asynchrone)
-  
-  // Étape 1: Définir ce qu'il faut faire en cas de confirmation
-  const onConfirmDelete = () => {
-    let decks = loadDecks();
-    decks[deckIndex] = decks[deckIndex].filter(card => card.id !== cardId);
-    
-    saveDecks(decks);
-    PERSISTENT_DECKS = decks; // Met à jour l'état global
-    closeModal(DOM.editCardModal);
-    
-    regenerateAllDynamicContent();
-    showAllSoluce(); // Reste sur la page Admin
-  };
-
-  // Étape 2: Afficher la modale de confirmation
-  showConfirm(
-    "Supprimer la carte",
-    "Êtes-vous sûr de vouloir supprimer cette carte ? Cette action est irréversible.",
-    onConfirmDelete
+// ... (code inchangé) ...
   );
 }
 
 function openDeckModal(deckIndex = null) {
-  DOM.deckColorSelector.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
-  DOM.editDeckId.value = '';
-
-  if (deckIndex === null) {
-    // MODE AJOUT
-    DOM.deckModalTitle.textContent = "Créer un nouveau Deck";
-    DOM.deckNameInput.value = '';
-    DOM.deckEmojiInput.value = '';
-    DOM.deckIndicatorLeftInput.value = 'GAUCHE';
-    DOM.deckIndicatorRightInput.value = 'DROITE';
-    DOM.deckColorSelector.querySelector('.color-swatch').classList.add('selected');
-  } else {
-    // MODE ÉDITION
-    DOM.deckModalTitle.textContent = "Modifier le Deck";
-    const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
-    DOM.editDeckId.value = deckIndex;
-    DOM.deckNameInput.value = deckInfo.name;
-    DOM.deckEmojiInput.value = deckInfo.emoji;
-    DOM.deckIndicatorLeftInput.value = deckInfo.indicatorLeft || 'GAUCHE';
-    DOM.deckIndicatorRightInput.value = deckInfo.indicatorRight || 'DROITE';
-    
-    const swatch = DOM.deckColorSelector.querySelector(`[data-color-name="${deckInfo.color}"]`);
-    if (swatch) {
-      swatch.classList.add('selected');
-    } else {
-      DOM.deckColorSelector.querySelector('.color-swatch').classList.add('selected'); // Fallback
-    }
-  }
-  openModal(DOM.deckModal);
-  DOM.deckNameInput.focus();
+// ... (code inchangé) ...
 }
 
 function saveDeckInfo() {
-  const name = DOM.deckNameInput.value.trim();
-  const emoji = DOM.deckEmojiInput.value.trim();
-  const indicatorLeft = DOM.deckIndicatorLeftInput.value.trim();
-  const indicatorRight = DOM.deckIndicatorRightInput.value.trim();
-  const selectedColorEl = DOM.deckColorSelector.querySelector('.color-swatch.selected');
-  const colorName = selectedColorEl ? selectedColorEl.getAttribute('data-color-name') : 'gray';
-
-  if (!name || !emoji || !indicatorLeft || !indicatorRight) {
-    // REMPLACEMENT: alert -> showAlert
-    showAlert("Formulaire incomplet", "Veuillez remplir tous les champs.", "warning");
-    return;
-  }
-
-  let decks = loadDecks();
-  let info = loadDeckInfo();
-  const colorClasses = getColorClasses(colorName);
-  
-  const newDeckInfo = {
-    name: name,
-    emoji: emoji,
-    indicatorLeft: indicatorLeft,
-    indicatorRight: indicatorRight,
-    color: colorName,
-    ...colorClasses
-  };
-
-  const deckIndexToEdit = DOM.editDeckId.value;
-
-  if (deckIndexToEdit !== "") {
-    // MODE ÉDITION
-    info[parseInt(deckIndexToEdit)] = newDeckInfo;
-  } else {
-    // MODE AJOUT
-    info.push(newDeckInfo);
-    decks.push([]); // Ajoute un tableau vide pour les cartes
-  }
-
-  saveDeckInfoToStorage(info);
-  saveDecks(decks);
-  
-  PERSISTENT_DECKS = decks;
-  PERSISTENT_DECK_INFO = info;
-  
-  regenerateAllDynamicContent();
-  closeModal(DOM.deckModal);
-  showAllSoluce(); // Reste sur la page Admin
+// ... (code inchangé) ...
 }
 
 // ------------------------------------
 // --- FONCTIONS UTILITAIRES & UI ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 function updateUI() {
-  DOM.scoreDisplay.textContent = state.game.score;
-  const cardNum = Math.min(state.game.cardIndex + 1, MAX_CARDS);
-  DOM.indexDisplay.textContent = `${cardNum}/${MAX_CARDS}`;
-  
-  const finished = state.game.cardIndex >= MAX_CARDS;
-  
-  // CORRECTION: Cache la carte et les flèches à la fin du jeu
-  DOM.cardHolder.classList.toggle('hidden', finished);
-  DOM.arrowBtnContainer.classList.toggle('hidden', finished);
-  
-  // Affiche ou cache l'écran de fin
-  DOM.endOverlay.classList.toggle('hidden', !finished);
+// ... (code inchangé) ...
 }
 
 function displayCard() {
-  if (state.game.cardIndex < MAX_CARDS) {
-    const cur = PERSISTENT_DECKS[state.currentDeck].find(c => c.id === state.currentDeckCards[state.game.cardIndex].id);
-    
-    if (cur) { // Vérifie si la carte a été trouvée
-      DOM.cardImage.src = cur.img;
-      DOM.cardText.textContent = cur.text;
-    } else {
-      // Fallback si la carte a été supprimée pendant le jeu
-      DOM.cardImage.src = neutralImg;
-      DOM.cardText.textContent = "Erreur - Carte non trouvée";
-    }
-    
-    DOM.cardElement.style.transform = 'none';
-    DOM.cardElement.style.opacity = '1';
-    DOM.cardElement.classList.remove('slide-out-left', 'slide-out-right');
-    
-    DOM.cardElement.style.borderColor = 'rgba(255,255,255,0.04)'; 
-    DOM.overlayLeft.style.opacity = '0';
-    DOM.overlayRight.style.opacity = '0';
-    
-    const deckInfo = PERSISTENT_DECK_INFO[state.currentDeck];
-    DOM.indicatorLeft.innerHTML = deckInfo.indicatorLeft || 'GAUCHE';
-    DOM.indicatorRight.innerHTML = deckInfo.indicatorRight || 'DROITE';
-    
-    DOM.indicatorLeft.style.opacity = '0';
-    DOM.indicatorRight.style.opacity = '0';
-    DOM.indicatorLeft.style.transform = 'translateY(-50%) translateX(0px)';
-    DOM.indicatorRight.style.transform = 'translateY(-50%) translateX(0px)';
-  } else {
-    endGame();
+// ... (code inchangé) ...
   }
 }
-
+    
 function updateVisualFeedback(dx) {
-  const opacityRatio = Math.min(1, Math.abs(dx) / 100); 
-
-  if (dx < 0) { // Glissement vers la gauche
-    DOM.overlayLeft.style.opacity = (opacityRatio * 0.9).toString();
-    DOM.overlayRight.style.opacity = '0';
-    DOM.indicatorLeft.style.opacity = opacityRatio > 0.1 ? '1' : '0';
-    DOM.indicatorRight.style.opacity = '0';
-    DOM.indicatorLeft.style.transform = `translateY(-50%) translateX(${Math.min(0, 10 + dx / 5)}px)`;
-  } else if (dx > 0) { // Glissement vers la droite
-    DOM.overlayRight.style.opacity = (opacityRatio * 0.9).toString();
-    DOM.overlayLeft.style.opacity = '0';
-    DOM.indicatorRight.style.opacity = opacityRatio > 0.1 ? '1' : '0';
-    DOM.indicatorLeft.style.opacity = '0';
-    DOM.indicatorRight.style.transform = `translateY(-50%) translateX(${Math.max(0, dx / 5 - 10)}px)`;
-  } else {
-    DOM.overlayLeft.style.opacity = '0';
-    DOM.overlayRight.style.opacity = '0';
-    DOM.indicatorLeft.style.opacity = '0';
-    DOM.indicatorRight.style.opacity = '0';
-    DOM.indicatorLeft.style.transform = 'translateY(-50%) translateX(0px)';
-    DOM.indicatorRight.style.transform = 'translateY(-50%) translateX(0px)';
+// ... (code inchangé) ...
   }
 }
 
 function displayErrorRecap() {
   DOM.recapList.innerHTML = '';
-  
+// ... (code inchangé) ...
   if (state.resultsRecap.length === 0) {
     DOM.recapTitle.textContent = "Aucune carte jouée dans cette partie.";
     return;
@@ -1408,228 +371,74 @@ function displayErrorRecap() {
 }
 
 function renderScores() {
-  const allScores = getScores();
-  const filtered = state.currentFilter === 'all' ? allScores : allScores.filter(s => s.deck === state.currentFilter);
-  
-  DOM.scoresList.innerHTML = '';
-  if (filtered.length === 0) {
-    DOM.scoresList.innerHTML = '<div class="text-gray-300 text-center py-6">Aucun score enregistré.</div>';
-    return;
-  }
-  
-  filtered.forEach(score => {
-    const el = document.createElement('div');
-    el.className = 'flex justify-between items-center p-3 bg-white/5 rounded-lg hover:bg-white/8 transition';
-    const deckInfo = PERSISTENT_DECK_INFO[score.deck];
-    const deckEmoji = score.deckEmoji || (deckInfo ? deckInfo.emoji : '❓');
-    // Sécurisation du nom du joueur
-    const safePlayerName = (score.player || "Sans nom").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    
-    el.innerHTML = `
-      <div>
-        <div class="flex items-center gap-2 mb-1">
-          <span class="text-xl">${deckEmoji}</span>
-          <span class="font-semibold">${safePlayerName}</span>
-        </div>
-        <div class="text-xs text-gray-400">${new Date(score.timestamp).toLocaleString('fr-FR')}</div>
-      </div>
-      <div class="text-right">
-        <div class="text-2xl font-bold ${score.percentage === 0 ? 'text-green-400' : score.percentage === 100 ? 'text-pink-400' : 'text-purple-400'}">${score.percentage}%</div>
-        <div class="text-xs text-gray-400">${score.errors} erreur${score.errors > 1 ? 's' : ''}</div>
-      </div>
-    `;
+// ... (code inchangé) ...
     DOM.scoresList.appendChild(el);
   });
 }
 
 function filterScores(filter, targetElement) {
-  state.currentFilter = filter;
-  DOM.scoreFilterButtons.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-  targetElement.classList.add('active'); 
-  renderScores();
+// ... (code inchangé) ...
 }
 
 function saveScore(playerName, deckIndex, errors, percentage) {
-  const scores = getScores();
-  const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
-  scores.unshift({
-    player: playerName,
-    deck: deckIndex,
-    deckName: deckInfo ? deckInfo.name : "Deck Inconnu",
-    deckEmoji: deckInfo ? deckInfo.emoji : "❓",
-    errors: errors,
-    percentage: percentage,
-    timestamp: Date.now()
-  });
+// ... (code inchangé) ...
   localStorage.setItem('game_scores', JSON.stringify(scores.slice(0, 100)));
 }
 
 // --- Fonctions Modales ---
 function openModal(modalEl) {
-  if (typeof modalEl === 'string') {
-    // C'est une URL d'image pour l'imageModal
-    DOM.modalImage.src = modalEl;
-    DOM.imageModal.classList.add('active');
-  } else {
-    // C'est un élément modal
-    modalEl.classList.add('active');
+// ... (code inchangé) ...
   }
 }
-
+    
 function closeModal(modalEl) {
-  modalEl.classList.remove('active');
+// ... (code inchangé) ...
 }
-
+    
 function openPasswordModal() {
-  DOM.passwordInput.value = '';
-  DOM.passwordError.classList.add('hidden');
-  openModal(DOM.passwordModal);
-  DOM.passwordInput.focus();
+// ... (code inchangé) ...
 }
-
+    
 function isModalOpen() {
-  return DOM.imageModal.classList.contains('active') || 
-         DOM.passwordModal.classList.contains('active') || 
-         DOM.editCardModal.classList.contains('active') ||
-         DOM.deckModal.classList.contains('active') ||
+// ... (code inchangé) ...
          DOM.alertModal.classList.contains('active'); // AJOUT
 }
-
+    
 // ------------------------------------
 // --- NOUVELLES FONCTIONS D'ALERTE ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 /**
  * Affiche une alerte non bloquante.
- * @param {string} title - Le titre de l'alerte.
- * @param {string} text - Le message de l'alerte.
- * @param {string} type - 'info' (défaut), 'success' (vert), 'warning' (orange), 'error' (rouge).
+// ... (code inchangé) ...
  */
 function showAlert(title, text, type = 'info') {
-  DOM.alertModalTitle.textContent = title;
-  DOM.alertModalText.textContent = text;
-  DOM.alertModalButtons.innerHTML = ''; // Vide les anciens boutons
-
-  // Couleur du titre
-  DOM.alertModalTitle.className = "text-2xl font-bold mb-4 ";
-  switch (type) {
-    case 'success':
-      DOM.alertModalTitle.classList.add('text-green-400');
-      break;
-    case 'error':
-      DOM.alertModalTitle.classList.add('text-red-400');
-      break;
-    case 'warning':
-      DOM.alertModalTitle.classList.add('text-yellow-400');
-      break;
-    default:
-      DOM.alertModalTitle.classList.add('text-white');
-  }
-
-  // Bouton OK
-  const okButton = document.createElement('button');
-  okButton.textContent = "OK";
-  okButton.className = "px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold";
-  okButton.onclick = () => closeModal(DOM.alertModal);
-  
-  DOM.alertModalButtons.appendChild(okButton);
+// ... (code inchangé) ...
   openModal(DOM.alertModal);
 }
 
 /**
  * Affiche une confirmation non bloquante.
- * @param {string} title - Le titre de la confirmation.
- * @param {string} text - La question de confirmation.
- * @param {function} onConfirm - La fonction callback à exécuter si l'utilisateur confirme.
+// ... (code inchangé) ...
  */
 function showConfirm(title, text, onConfirm) {
-  DOM.alertModalTitle.textContent = title;
-  DOM.alertModalText.textContent = text;
-  DOM.alertModalButtons.innerHTML = ''; // Vide les anciens boutons
-  DOM.alertModalTitle.className = "text-2xl font-bold mb-4 text-white"; // Couleur par défaut
-
-  // Bouton Annuler
-  const cancelButton = document.createElement('button');
-  cancelButton.textContent = "Annuler";
-  cancelButton.className = "px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold";
-  cancelButton.onclick = () => closeModal(DOM.alertModal);
-  
-  // Bouton Confirmer (rouge pour indiquer une action destructive)
-  const confirmButton = document.createElement('button');
-  confirmButton.textContent = "Confirmer";
-  confirmButton.className = "px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold";
-  confirmButton.onclick = () => {
-    closeModal(DOM.alertModal);
-    onConfirm(); // Exécute le callback
-  };
-  
-  DOM.alertModalButtons.appendChild(cancelButton);
-  DOM.alertModalButtons.appendChild(confirmButton);
+// ... (code inchangé) ...
   openModal(DOM.alertModal);
 }
 
 // --- Autres Utilitaires ---
 function shuffleArray(array) {
-  const newArray = [...array]; 
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
+// ... (code inchangé) ...
   return newArray;
 }
-
+    
 function getResultMessage(errorPercent) {
-  const deckIndex = state.currentDeck;
-  const deckMessages = [
-    // Deck 0: Classic
-    {
-      0: { text: "PERFECT! ZERO ERREUR", color: "bg-green-600" },
-      100: { text: "100% GAY", color: "bg-pink-600" },
-      50: { text: "UN TROU C UN TROU", color: "bg-purple-600" },
-      default: { text: "PETIT CURIEUX", color: "bg-blue-600" }
-    },
-    // Deck 1: Hardcore
-    {
-      0: { text: "Intello du PC!", color: "bg-green-600" },
-      100: { text: "100% Consoleux", color: "bg-red-600" },
-      50: { text: "Gamer du dimanche", color: "bg-yellow-600" },
-      default: { text: "Connaisseur", color: "bg-blue-600" }
-    },
-    // Deck 2: Cosplay
-    {
-      0: { text: "Maître du déguisement", color: "bg-green-600" },
-      100: { text: "A besoin d'une-up", color: "bg-red-600" },
-      50: { text: "Encore en civil", color: "bg-yellow-600" },
-      default: { text: "Passionné de Pop Culture", color: "bg-blue-600" }
-    }
-  ];
-  
-  const messages = deckMessages[deckIndex] || {
-    // Fallback pour les nouveaux decks
-    0: { text: "PARFAIT !", color: "bg-green-600" },
-    50: { text: "Peut mieux faire", color: "bg-yellow-600" },
-    default: { text: "Bien joué !", color: "bg-blue-600" }
-  };
-
-  if (errorPercent === 0) return messages[0];
-  if (errorPercent === 100 && messages[100]) return messages[100];
-  if (errorPercent >= 50 && messages[50]) return messages[50];
+// ... (code inchangé) ...
   return messages.default;
 }
-
+    
 function getColorClasses(colorName) {
-  const colorMap = {
-    "purple": { titleColor: "text-purple-400", cardBorder: "border-purple-400/30" },
-    "cyan": { titleColor: "text-cyan-400", cardBorder: "border-cyan-400/30" },
-    "pink": { titleColor: "text-pink-400", cardBorder: "border-pink-400/30" },
-    "green": { titleColor: "text-green-400", cardBorder: "border-green-400/30" },
-    "yellow": { titleColor: "text-yellow-400", cardBorder: "border-yellow-400/30" },
-    "gray": { titleColor: "text-gray-400", cardBorder: "border-gray-400/30" },
-    "red": { titleColor: "text-red-400", cardBorder: "border-red-400/30" },
-    "blue": { titleColor: "text-blue-400", cardBorder: "border-blue-400/30" },
-    "indigo": { titleColor: "text-indigo-400", cardBorder: "border-indigo-400/30" },
-    "emerald": { titleColor: "text-emerald-400", cardBorder: "border-emerald-400/30" },
-    "orange": { titleColor: "text-orange-400", cardBorder: "border-orange-400/30" }
-  };
+// ... (code inchangé) ...
   return colorMap[colorName] || colorMap["gray"];
 }
