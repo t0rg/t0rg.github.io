@@ -32,13 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 function queryDOMElements() {
   // ... (code inchangé) ...
-  DOM.btnArrowLeft = document.getElementById('btn-arrow-left');
-  DOM.btnArrowRight = document.getElementById('btn-arrow-right');
-  DOM.btnZoomCard = document.getElementById('btn-zoom-card'); // AJOUT
-  DOM.messageBox = document.getElementById('message-box');
-  
-  // Écran de fin
-// ... (code inchangé) ...
   DOM.btnCloseAlertModal = document.getElementById('btn-close-alert-modal');
 }
 
@@ -54,11 +47,10 @@ function initEventListeners() {
   // Jeu
   DOM.btnQuitGame.addEventListener('click', quitGame);
   
-  // CORRECTION: L'écouteur 'click' est SUPPRIMÉ de la carte
-  // DOM.cardElement.addEventListener('click', ...);
-
-  // AJOUT: Le bouton zoom gère maintenant le clic
-  DOM.btnZoomCard.addEventListener('click', () => {
+  // CORRECTION: L'écouteur 'click' est restauré.
+  // Il est séparé de la logique de 'drag'.
+  DOM.cardElement.addEventListener('click', () => {
+    // N'ouvre la modale que si l'image n'est pas le placeholder par défaut
     if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
       openModal(DOM.cardImage.src);
     }
@@ -232,7 +224,18 @@ function handleDecision(decision) {
 // ------------------------------------
 
 function onDragStart(e) {
-// ... (code inchangé) ...
+  if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS || isModalOpen()) return;
+
+  if (e.type === 'mousedown') {
+    state.drag.isMouseDown = true;
+    state.drag.startX = e.clientX;
+    // e.preventDefault(); // SUPPRIMÉ: C'est ce qui bloquait l'événement 'click'
+  } else { // touchstart
+    state.drag.isDragging = true;
+    state.drag.startX = e.touches[0].clientX;
+  }
+  
+  state.drag.currentX = state.drag.startX;
   DOM.cardElement.style.transition = 'none'; 
   DOM.cardElement.style.cursor = 'grabbing';
 }
@@ -243,32 +246,35 @@ function onDragMove(e) {
   updateVisualFeedback(dx); 
 }
 
-// CORRECTION: La logique de 'clic' est retirée de onDragEnd
+// CORRECTION: Logique restaurée de 'alpha.html'
 function onDragEnd(e) {
+// ... (code inchangé) ...
   if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
 
   const isMouseUp = e.type === 'mouseup';
-  if (isMouseUp) {
-    state.drag.isMouseDown = false;
-  } else { // touchend
+// ... (code inchangé) ...
     state.drag.isDragging = false;
   }
 
   DOM.cardElement.style.cursor = 'grab';
-  const dx = state.drag.currentX - state.drag.startX;
+// ... (code inchangé) ...
   state.drag.startX = 0;
 
-  // Si c'est un "tap" (mobile) ou un "clic" (souris),
-  // on ne fait rien et on remet la carte en place.
-  if (Math.abs(dx) < 10) {
+  // Si c'est un "tap" (mobile), on annule et on laisse le 'click' listener gérer le zoom.
+  if (Math.abs(dx) < 10 && !isMouseUp) {
     DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s';
     DOM.cardElement.style.transform = 'none'; // Snap back
-    updateVisualFeedback(0);
     return;
   }
   
   DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s'; 
   updateVisualFeedback(0); 
+  
+  // Si c'est un "clic" (souris), on annule et on laisse le 'click' listener gérer le zoom.
+  if (Math.abs(dx) < 10 && isMouseUp) {
+     DOM.cardElement.style.transform = 'none';
+     return;
+  }
   
   // Si le mouvement est suffisant, c'est un swipe
   if (dx > SWIPE_THRESHOLD) handleDecision('right');
@@ -325,29 +331,18 @@ function saveDeckInfo() {
 
 // ------------------------------------
 // --- FONCTIONS UTILITAIRES & UI ---
+// ... (code inchangé) ...
 // ------------------------------------
 
 function updateUI() {
-  DOM.scoreDisplay.textContent = state.game.score;
 // ... (code inchangé) ...
-  const finished = state.game.cardIndex >= MAX_CARDS;
-  
-  // CORRECTION: Cache la carte et les flèches à la fin du jeu
-  DOM.cardHolder.classList.toggle('hidden', finished);
-  DOM.arrowBtnContainer.classList.toggle('hidden', finished);
-  // AJOUT: Cache aussi le bouton zoom
-  if (DOM.btnZoomCard) {
-    DOM.btnZoomCard.classList.toggle('hidden', finished);
-  }
   
   // Affiche ou cache l'écran de fin
-// ... (code inchangé) ...
   DOM.endOverlay.classList.toggle('hidden', !finished);
 }
 
 function displayCard() {
 // ... (code inchangé) ...
-    endGame();
   }
 }
     
