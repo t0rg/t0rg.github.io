@@ -46,8 +46,14 @@ function initEventListeners() {
   // Jeu
   DOM.btnQuitGame.addEventListener('click', quitGame);
   
-  // CORRECTION: L'événement 'click' est géré par onDragEnd
-  // DOM.cardElement.addEventListener('click', ...); // SUPPRIMÉ
+  // CORRECTION: L'écouteur 'click' est restauré.
+  // Il est séparé de la logique de 'drag'.
+  DOM.cardElement.addEventListener('click', () => {
+    // N'ouvre la modale que si l'image n'est pas le placeholder par défaut
+    if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
+      openModal(DOM.cardImage.src);
+    }
+  });
   
   DOM.btnArrowLeft.addEventListener('click', () => handleDecision('left'));
 // ... (code inchangé) ...
@@ -217,19 +223,40 @@ function handleDecision(decision) {
 // ------------------------------------
 
 function onDragStart(e) {
-// ... (code inchangé) ...
+  if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS || isModalOpen()) return;
+
+  if (e.type === 'mousedown') {
+    state.drag.isMouseDown = true;
+    state.drag.startX = e.clientX;
+    e.preventDefault(); // Empêche la sélection de texte
+  } else { // touchstart
+    state.drag.isDragging = true;
+    state.drag.startX = e.touches[0].clientX;
+  }
+  
+  state.drag.currentX = state.drag.startX;
   DOM.cardElement.style.transition = 'none'; 
   DOM.cardElement.style.cursor = 'grabbing';
 }
 
 function onDragMove(e) {
-// ... (code inchangé) ...
+  if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
+
+  if (e.type === 'mousemove') {
+    state.drag.currentX = e.clientX;
+  } else { // touchmove
+    state.drag.currentX = e.touches[0].clientX;
+  }
+  
+  const dx = state.drag.currentX - state.drag.startX;
+  let rot = (dx / MAX_DISP) * MAX_ROT;
+  rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, rot));
+  
   DOM.cardElement.style.transform = `translateX(${dx}px) rotate(${rot}deg)`;
   updateVisualFeedback(dx); 
 }
 
-// CORRECTION: La logique de onDragEnd est modifiée pour 
-// gérer le clic/tap directement.
+// CORRECTION: Logique restaurée de 'alpha.html'
 function onDragEnd(e) {
   if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
 
@@ -243,19 +270,21 @@ function onDragEnd(e) {
   DOM.cardElement.style.cursor = 'grab';
   const dx = state.drag.currentX - state.drag.startX;
   state.drag.startX = 0;
+
+  // Si c'est un "tap" (mobile), on annule et on laisse le 'click' listener gérer le zoom.
+  if (Math.abs(dx) < 10 && !isMouseUp) {
+    DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s';
+    DOM.cardElement.style.transform = 'none'; // Snap back
+    return;
+  }
   
   DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s'; 
   updateVisualFeedback(0); 
   
-  // CORRECTION: Si le mouvement est faible, c'est un clic/tap.
-  if (Math.abs(dx) < 10) { 
-    DOM.cardElement.style.transform = 'none'; // Snap back
-    
-    // Déclenche le zoom manuellement pour mouseup ET touchend
-    if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
-      openModal(DOM.cardImage.src);
-    }
-    return;
+  // Si c'est un "clic" (souris), on annule et on laisse le 'click' listener gérer le zoom.
+  if (Math.abs(dx) < 10 && isMouseUp) {
+     DOM.cardElement.style.transform = 'none';
+     return;
   }
   
   // Si le mouvement est suffisant, c'est un swipe
