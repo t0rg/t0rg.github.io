@@ -273,12 +273,11 @@ function initEventListeners() {
 
   // Jeu
   DOM.btnQuitGame.addEventListener('click', quitGame);
-  DOM.cardElement.addEventListener('click', () => {
-    // N'ouvre la modale que si l'image n'est pas le placeholder par défaut
-    if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
-      openModal(DOM.cardImage.src);
-    }
-  });
+  
+  // CORRECTION: L'événement 'click' a été déplacé vers onDragEnd pour 
+  // différencier un clic d'un glissement.
+  // DOM.cardElement.addEventListener('click', ...) // SUPPRIMÉ
+
   DOM.btnArrowLeft.addEventListener('click', () => handleDecision('left'));
   DOM.btnArrowRight.addEventListener('click', () => handleDecision('right'));
   
@@ -753,7 +752,7 @@ function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
       openEditModal(deckIndex, card.id);
     } else if (hasSoluceLink) {
       window.open(card.soluceLink, '_blank');
-    } else {
+    } else if (card.img && !card.img.includes('placehold.co')) { // N'ouvre que les vraies images
       openModal(card.img);
     }
   });
@@ -965,7 +964,7 @@ function handleDecision(decision) {
 
 // ------------------------------------
 // --- LOGIQUE DE DRAG/SWIPE ---
-// ... (Fonctions onDragStart, onDragMove, onDragEnd) ...
+// ------------------------------------
 function onDragStart(e) {
   if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS || isModalOpen()) return;
 
@@ -1001,7 +1000,15 @@ function onDragMove(e) {
 }
 
 function onDragEnd(e) {
-  if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
+  if (state.game.isProcessing || isModalOpen()) {
+    // Si une modale est ouverte, ou jeu en cours, reset
+    state.drag.isMouseDown = false;
+    state.drag.isDragging = false;
+    return;
+  }
+  
+  // S'assure qu'on était bien en train de glisser
+  if (!state.drag.isMouseDown && !state.drag.isDragging) return;
 
   const isMouseUp = e.type === 'mouseup';
   if (isMouseUp) {
@@ -1013,21 +1020,28 @@ function onDragEnd(e) {
   DOM.cardElement.style.cursor = 'grab';
   const dx = state.drag.currentX - state.drag.startX;
   state.drag.startX = 0;
-
-  // Si c'est un clic rapide (ou un tap), ne pas traiter comme un swipe
-  // Sauf si c'est un mouseup, auquel cas on veut permettre le "clic" pour la modale
-  if (Math.abs(dx) < 10 && !isMouseUp) {
-    DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s';
-    DOM.cardElement.style.transform = 'none'; // Snap back
-    return;
-  }
   
+  // Remet la transition
   DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s'; 
   updateVisualFeedback(0); 
+
+  // CORRECTION: Gère le clic
+  // Si le mouvement est très court (un clic ou un tap)
+  if (Math.abs(dx) < 10) {
+    // C'est un clic
+    DOM.cardElement.style.transform = 'none'; // Snap back
+    
+    // Déclenche le zoom manuellement (ce que faisait l'ancien 'click')
+    if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
+      openModal(DOM.cardImage.src);
+    }
+    return; // Ne pas traiter comme un swipe
+  }
   
+  // C'est un swipe
   if (dx > SWIPE_THRESHOLD) handleDecision('right');
   else if (dx < -SWIPE_THRESHOLD) handleDecision('left');
-  else DOM.cardElement.style.transform = 'none';
+  else DOM.cardElement.style.transform = 'none'; // Pas assez glissé, snap back
 }
 
 function onKeyDown(e) {
