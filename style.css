@@ -1,25 +1,62 @@
-/* STYLES CSS COMPLETS (Base + Ajouts pour le feedback dynamique) */
+/* STYLES CSS COMPLETS - VERSION AMÉLIORÉE */
 .bg-game { background: linear-gradient(180deg,#0b1220 0%, #071018 100%); }
 .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.04); }
-/* MODIF CSS: Ajout de 'border-color' pour le feedback vert/rouge */
-.card-container { transition: transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s; will-change: transform, opacity, border-color; touch-action: none; cursor: grab; }
+
+/* MODIFICATION: Suppression de 'border-color' du transition */
+.card-container { 
+  transition: transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s; 
+  will-change: transform, opacity; 
+  touch-action: none; 
+  cursor: grab; 
+}
 .slide-out-left { transform: translateX(-150vw) rotate(-22deg) !important; opacity: 0; }
 .slide-out-right { transform: translateX(150vw) rotate(-22deg) !important; opacity: 0; }
 
-/* CORRECTIF MAJEUR: 'position: absolute' est supprimé pour permettre un défilement normal.
-  Les écrans sont maintenant des blocs flex centrés.
-*/
+/* AMÉLIORATION: Transitions de page élaborées */
 .screen { 
-  /* position:absolute; inset:0; */ /* SUPPRIMÉ */
   display:flex; 
   align-items:center; 
   justify-content:center;
   width: 100%;
-  min-height: calc(100vh - 12rem); /* Hauteur minimale pour centrer sur les écrans courts */
-  padding: 1.5rem; /* Ajout d'un padding pour aérer */
+  min-height: calc(100vh - 12rem);
+  padding: 1.5rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.screen.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .screen.items-start { align-items: flex-start; justify-content: center; }
-.hidden-screen{ display:none; }
+.hidden-screen{ 
+  display:none; 
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+/* Animation d'entrée pour les éléments de page */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.screen.active > * {
+  animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+.screen.active > *:nth-child(2) { animation-delay: 0.05s; }
+.screen.active > *:nth-child(3) { animation-delay: 0.1s; }
+.screen.active > *:nth-child(4) { animation-delay: 0.15s; }
 
 .circular-gauge { width: 200px; height: 200px; position: relative; }
 .circular-gauge svg { transform: rotate(-90deg); }
@@ -36,7 +73,8 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
 .msg { transition: opacity .25s ease; }
 .result-message { animation: fadeInScale 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) 0.3s both; }
 @keyframes fadeInScale { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
-/* AJOUTS CSS POUR LE FEEDBACK DYNAMIQUE */
+
+/* Overlay gradients - Plus fluides */
 .overlay-gradient { 
     position: absolute; 
     top: 0; 
@@ -44,10 +82,11 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     width: 50%; 
     opacity: 0; 
     pointer-events: none;
-    transition: opacity .1s linear;
+    transition: opacity .2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-#overlay-left { left: 0; background: linear-gradient(90deg, rgba(168,85,247, 0.1) 0%, rgba(168,85,247, 0) 100%); }
-#overlay-right { right: 0; background: linear-gradient(-90deg, rgba(236,72,153, 0.1) 0%, rgba(236,72,153, 0) 100%); }
+#overlay-left { left: 0; background: linear-gradient(90deg, rgba(168,85,247, 0.15) 0%, rgba(168,85,247, 0) 100%); }
+#overlay-right { right: 0; background: linear-gradient(-90deg, rgba(236,72,153, 0.15) 0%, rgba(236,72,153, 0) 100%); }
+
 .swipe-indicator {
     position: absolute;
     top: 50%;
@@ -58,16 +97,16 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     border-radius: 9999px;
     z-index: 50;
     opacity: 0;
-    transition: opacity .1s linear, transform .1s linear;
+    transition: opacity .2s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform .2s cubic-bezier(0.4, 0, 0.2, 1);
 }
-#indicator-left { left: -1rem; color: #c084fc; background: rgba(168,85,247, 0.2); }
-#indicator-right { right: -1rem; color: #f472b6; background: rgba(236,72,153, 0.2); }
+#indicator-left { left: -1rem; color: #c084fc; background: rgba(168,85,247, 0.3); }
+#indicator-right { right: -1rem; color: #f472b6; background: rgba(236,72,153, 0.3); }
 
-/* NOUVEAU STYLE POUR LE RÉCAPITULATIF */
 .error-card-recap { transition: transform 0.3s ease; cursor: pointer; }
 .error-card-recap:hover { transform: translateY(-3px); }
 
-/* STYLE DE LA MODALE ET MODALE MOT DE PASSE */
+/* AMÉLIORATION: Modales avec animations élaborées */
 .base-modal {
     position: fixed;
     inset: 0;
@@ -78,13 +117,14 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     justify-content: center;
     backdrop-filter: blur(5px);
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .base-modal.active {
     display: flex;
     opacity: 1;
 }
-#modal-content, #password-modal-content, #edit-modal-content, #deck-modal-content, #alert-modal-content {
+
+#password-modal-content, #edit-modal-content, #deck-modal-content, #alert-modal-content {
     max-width: 90%;
     padding: 1.5rem;
     background: rgba(255, 255, 255, 0.05);
@@ -92,16 +132,67 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
     max-height: 90%;
     box-sizing: border-box;
-    /* CORRECTION: Ajout de flex pour le scrolling interne */
     display: flex;
     flex-direction: column;
+    transform: scale(0.9) translateY(20px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+.base-modal.active #password-modal-content,
+.base-modal.active #edit-modal-content,
+.base-modal.active #deck-modal-content,
+.base-modal.active #alert-modal-content {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+}
+
+/* AMÉLIORATION: Zoom d'image optimisé et uniforme */
+#modal-content {
+    max-width: 95vw;
+    max-height: 95vh;
+    padding: 0;
+    background: transparent;
+    border-radius: 1rem;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(0.9);
+    opacity: 0;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.base-modal.active #modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
 #modal-image {
-    max-width: 100%;
-    max-height: 100%;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    height: auto;
     object-fit: contain;
     border-radius: 1rem;
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.8),
+                0 0 100px rgba(168, 85, 247, 0.3);
+    animation: imageZoomIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+@keyframes imageZoomIn {
+    from {
+        transform: scale(0.85);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
 .close-btn {
     position: absolute;
     top: 20px;
@@ -110,10 +201,11 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     cursor: pointer;
     color: white;
     text-shadow: 0 0 10px black;
-    transition: color 0.2s;
+    transition: color 0.2s, transform 0.2s;
 }
 .close-btn:hover {
     color: #ec4899;
+    transform: scale(1.1) rotate(90deg);
 }
 #password-input {
     letter-spacing: 0.5rem;
@@ -121,7 +213,7 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     font-size: 1.5rem;
 }
 
-/* STYLES DE BOUTONS FLÈCHES */
+/* Boutons flèches */
 .arrow-btn-container {
   margin-top: 1.5rem;
   width: 100%;
@@ -130,18 +222,22 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
 .arrow-btn {
     width: 70px;
     height: 48px;
-    border-radius: 9999px; /* Pill shape */
+    border-radius: 9999px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 1.5rem;
     font-weight: bold;
-    transition: background-color 0.2s, transform 0.2s;
+    transition: background-color 0.2s, transform 0.2s, box-shadow 0.2s;
     cursor: pointer;
     border: 2px solid;
 }
 .arrow-btn:hover {
     transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+.arrow-btn:active {
+    transform: scale(0.95);
 }
 #btn-arrow-left {
     background-color: rgba(168, 85, 247, 0.2);
@@ -154,17 +250,16 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     color: #ec4899;
 }
 .arrow-svg {
-    width: 24px; /* Taille du SVG */
+    width: 24px;
     height: 24px;
-    fill: currentColor; /* Le SVG prend la couleur du parent */
+    fill: currentColor;
     stroke-width: 2;
 }
 
-/* NOUVEAU STYLE POUR LE BOUTON ZOOM */
 .arrow-btn-zoom {
-    width: 48px;  /* Un peu plus petit que les flèches */
+    width: 48px;
     height: 48px;
-    border-radius: 9999px; /* Cercle */
+    border-radius: 9999px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -183,8 +278,6 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     color: rgba(255, 255, 255, 0.7);
 }
 
-
-/* STYLE POUR LE PETIT BOUTON SOLUCE SUR DECK SCREEN */
 #btn-view-soluce-deck {
     transition: transform 0.2s ease;
 }
@@ -192,7 +285,7 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     transform: scale(1.05);
 }
 
-/* Style pour la galerie Soluce */
+/* Galerie Soluce */
 .soluce-gallery-item {
     width: 120px;
     height: 160px;
@@ -204,28 +297,20 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
 }
 .soluce-gallery-item-image-container {
     position: relative;
-    /* CURSEUR EN MODE CONSULTATION DÉSACTIVÉ */
     cursor: default; 
 }
-/* Style pour le curseur en mode édition/soluce */
-/* MODIFICATION: SOLUCE LINK MODE UTILISE MAINTENANT isEditingMode UNIQUEMENT POUR LE CURSEUR */
 .soluce-gallery-item.editing-mode {
     cursor: pointer !important;
-    outline: 2px dashed #34d399; /* Vert pour édition */
+    outline: 2px dashed #34d399;
 }
 .soluce-gallery-item.editing-mode:hover {
     transform: scale(1.02);
 }
-
-/* MODIFICATION: Le mode de base (lien/zoom) utilise le curseur par défaut, mais ajoute le lien/agrandir au clic */
 .soluce-gallery-item {
     cursor: pointer;
 }
-
-/* Suppression de l'indication "cliquez pour agrandir" */
 .edit-overlay-consult { display: none !important; }
 
-/* Style pour les séparateurs de Deck dans Soluce */
 .soluce-deck-title {
     width: 100%;
     text-align: center;
@@ -235,7 +320,6 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     font-size: 1.5rem;
     font-weight: bold;
     border-bottom: 2px solid rgba(255, 255, 255, 0.1); 
-    /* Ajout pour l'édition de deck */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -244,14 +328,13 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
 .edit-deck-btn {
     font-size: 1rem;
     cursor: pointer;
-    display: none; /* Caché par défaut */
+    display: none;
     transition: transform 0.2s;
 }
 .edit-deck-btn:hover {
     transform: scale(1.2);
 }
 
-/* Styles pour cacher/montrer les decks de solution */
 .soluce-deck-content.hidden-soluce {
     display: none;
 }
@@ -259,9 +342,9 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 1rem; /* Espace entre les vignettes */
+    gap: 1rem;
 }
-/* Champs d'édition */
+
 #edit-card-modal input, #edit-card-modal select, #deck-modal-content input, #deck-modal-content select {
     width: 100%;
     padding: 0.5rem;
@@ -278,16 +361,16 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     margin-bottom: 0.25rem;
     text-align: left;
 }
-/* Indicateur de lien soluce */
+
 .soluce-link-indicator {
     position: absolute;
     top: 5px;
     right: 5px;
     color: #f472b6;
     font-size: 1.25rem;
-    pointer-events: none; /* Ne doit pas bloquer le clic sur la vignette */
+    pointer-events: none;
 }
-/* Nouveau style pour les vignettes de résultats */
+
 .result-vignette {
     border-radius: 0.5rem;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
@@ -298,10 +381,10 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     margin: 0.25rem;
 }
 .result-vignette.success {
-    border: 2px solid #10B981; /* Vert */
+    border: 2px solid #10B981;
 }
 .result-vignette.error {
-    border: 2px solid #EF4444; /* Rouge */
+    border: 2px solid #EF4444;
 }
 .result-vignette img {
     width: 100%;
@@ -321,29 +404,21 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
 .result-vignette.error .result-status {
     color: #EF4444;
 }
-/* Style du bouton zoom sur la carte de jeu (SUPPRIMÉ) */
-/*
-#btn-zoom-card { ... }
-*/
 
-/* REFACTOR: Style pour le bouton admin dans le header (simplifié) */
-/* Le positionnement absolu a été supprimé pour utiliser flexbox */
-
-/* NOUVEAU STYLE: Bouton "Ajouter" (+) */
 .add-card-btn {
     width: 120px;
     height: 160px;
-    display: none; /* Caché par défaut */
+    display: none;
     align-items: center;
     justify-content: center;
     border: 2px dashed rgba(255, 255, 255, 0.3);
     border-radius: 0.5rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    padding: 0.5rem; /* Correspond à .soluce-gallery-item */
+    padding: 0.5rem;
 }
 .add-card-btn:hover {
-    border-color: #34d399; /* Teal */
+    border-color: #34d399;
     background: rgba(52, 211, 153, 0.1);
 }
 .add-card-btn svg {
@@ -357,7 +432,6 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
     transform: scale(1.1);
 }
 
-/* NOUVEAU STYLE: Sélecteur de couleur pour Deck */
 .color-swatch {
     width: 2rem;
     height: 2rem;
@@ -373,7 +447,43 @@ input[type="text"].player-input{ background:#f3f4f6; color:#0f172a; }
 .color-swatch:hover {
     transform: scale(1.1);
 }
-/* AJOUT: Permet aux sauts de ligne (\n) de fonctionner dans la modale d'alerte */
+
 #alert-modal-text {
     white-space: pre-wrap;
+}
+
+/* NOUVEAU: Zone de drop pour images */
+.drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 0.5rem;
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-bottom: 0.75rem;
+}
+
+.drop-zone.drag-over {
+    border-color: #34d399;
+    background: rgba(52, 211, 153, 0.1);
+}
+
+.drop-zone:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.drop-zone-text {
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+.drop-zone-preview {
+    margin-top: 1rem;
+    max-width: 200px;
+    max-height: 200px;
+    object-fit: contain;
+    border-radius: 0.5rem;
+    margin-left: auto;
+    margin-right: auto;
 }
