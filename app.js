@@ -1,138 +1,72 @@
 // --- CONSTANTES DE L'APPLICATION ---
 const MAX_CARDS = 10;
-const SOLUCE_PASSWORD = "1111"; // MOT DE PASSE SECRET
+const SOLUCE_PASSWORD = "1111";
 const DECKS_KEY = 'torg_game_decks';
 const DECK_INFO_KEY = 'torg_game_deck_info';
 
-// Constantes pour le drag/swipe
 const SWIPE_THRESHOLD = 80;
 const MAX_ROT = 15;
 const MAX_DISP = 150;
 
-// --- DONNÉES PAR DÉFAUT (si le localStorage est vide) ---
-// Métadonnées des decks
+// --- DONNÉES PAR DÉFAUT ---
 const DEFAULT_DECK_INFO = [
   { name: "Deck Classic", emoji: "🧜🏻", color: "purple", titleColor: "text-purple-400", cardBorder: "border-purple-400/30", indicatorLeft: "TRANS", indicatorRight: "GIRL" },
   { name: "Deck Hardcore", emoji: "🧚🏻", color: "cyan", titleColor: "text-cyan-400", cardBorder: "border-cyan-400/30", indicatorLeft: "PC", indicatorRight: "CONSOLE" },
   { name: "Deck Cosplay", emoji: "🧝🏻‍♀️", color: "pink", titleColor: "text-pink-400", cardBorder: "border-pink-400/30", indicatorLeft: "COSPLAY", indicatorRight: "IRL" }
 ];
 
-// MODIFICATION: Les decks initiaux sont maintenant des modèles neutres.
 const neutralImg = "https://placehold.co/400x550/FBFCF8/000000?text=?";
 const neutralCard = (correctSide = "left") => ({
   id: crypto.randomUUID(),
-  text: "", // Texte vide
+  text: "",
   correct: correctSide,
-  img: neutralImg, // Image placeholder
+  img: neutralImg,
   soluceLink: ""
 });
 
 const INITIAL_DECKS = [
-  [ // Deck 1 (10 cartes)
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"), // 6
-    neutralCard("left"),  // 7
-    neutralCard("right"), // 8
-    neutralCard("left"),  // 9
-    neutralCard("right")  // 10
-  ],
-  [ // Deck 2 (10 cartes)
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"), // 6
-    neutralCard("left"),  // 7
-    neutralCard("right"), // 8
-    neutralCard("left"),  // 9
-    neutralCard("right")  // 10
-  ],
-  [ // Deck 3 (10 cartes)
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"),
-    neutralCard("left"),
-    neutralCard("right"), // 6
-    neutralCard("left"),  // 7
-    neutralCard("right"), // 8
-    neutralCard("left"),  // 9
-    neutralCard("right")  // 10
-  ],
+  Array(10).fill(null).map((_, i) => neutralCard(i % 2 === 0 ? "left" : "right")),
+  Array(10).fill(null).map((_, i) => neutralCard(i % 2 === 0 ? "left" : "right")),
+  Array(10).fill(null).map((_, i) => neutralCard(i % 2 === 0 ? "left" : "right"))
 ];
-// FIN DE LA MODIFICATION
 
-// --- GESTION DE L'ÉTAT GLOBAL ---
-// Les données de la base de données persistante (chargées au démarrage)
+// --- ÉTAT GLOBAL ---
 let PERSISTENT_DECKS;
 let PERSISTENT_DECK_INFO;
 
-// L'état de l'application (réinitialisé ou chargé)
 const state = {
   playerName: '',
   currentDeck: 0,
   currentFilter: 'all',
-  game: {
-    score: 0,
-    cardIndex: 0,
-    isProcessing: false,
-  },
-  currentDeckCards: [], // Les 10 cartes tirées au sort pour cette partie
+  game: { score: 0, cardIndex: 0, isProcessing: false },
+  currentDeckCards: [],
   resultsRecap: [],
   isEditingMode: false,
-  editingCardGlobalId: null, // ID de la carte en cours d'édition
-  previousScreen: null, // AJOUT: Pour mémoriser l'écran précédent
-  // État du swipe/drag
-  drag: {
-    startX: 0,
-    currentX: 0,
-    isDragging: false,
-    isMouseDown: false
-  }
+  editingCardGlobalId: null,
+  previousScreen: null,
+  drag: { startX: 0, currentX: 0, isDragging: false, isMouseDown: false },
+  animationFrameId: null // NOUVEAU: Pour RAF
 };
 
-// --- SÉLECTION DES ÉLÉMENTS DU DOM ---
-// REFACTOR: Objet pour stocker tous les éléments du DOM
 const DOM = {};
 
-/**
- * Point d'entrée principal de l'application.
- * S'exécute lorsque le HTML est entièrement chargé.
- */
+// --- INITIALISATION ---
 document.addEventListener('DOMContentLoaded', () => {
-  // 1. Sélectionner tous les éléments du DOM
   queryDOMElements();
-  
-  // 2. Charger les données persistantes (ou les initialiser)
   loadPersistentData();
   
-  // 3. Initialiser l'état (ex: nom du joueur)
   state.playerName = localStorage.getItem('player_name') || '';
   if (state.playerName) {
     DOM.playerNameInput.value = state.playerName;
     DOM.playerDisplay.textContent = state.playerName;
   }
 
-  // 4. Configurer tous les auditeurs d'événements
   initEventListeners();
-  
-  // 5. Générer le contenu dynamique (listes de decks, galeries...)
   regenerateAllDynamicContent();
-
-  // 6. Afficher l'écran d'introduction
   showScreen(DOM.introScreen);
 });
 
-/**
- * REFACTOR: Sélectionne tous les éléments DOM statiques une seule fois.
- */
 function queryDOMElements() {
-  // Écrans
   DOM.introScreen = document.getElementById('intro-screen');
   DOM.deckScreen = document.getElementById('deck-screen');
   DOM.gameScreen = document.getElementById('game-screen');
@@ -140,22 +74,17 @@ function queryDOMElements() {
   DOM.soluceScreen = document.getElementById('soluce-screen'); 
   DOM.publicSoluceScreen = document.getElementById('public-soluce-screen');
   
-  // Header
   DOM.btnHeaderAdmin = document.getElementById('btn-header-admin');
   DOM.playerDisplay = document.getElementById('player-display');
-
-  // Intro
   DOM.playerNameInput = document.getElementById('player-name');
   DOM.btnStart = document.getElementById('btn-start');
   DOM.btnViewScores = document.getElementById('btn-view-scores');
 
-  // Sélection Deck
   DOM.deckSelectionGrid = document.getElementById('deck-selection-grid');
   DOM.btnViewScoresFromDeck = document.getElementById('btn-view-scores-from-deck');
   DOM.btnViewPublicSoluce = document.getElementById('btn-view-public-soluce');
   DOM.btnChangePlayer = document.getElementById('btn-change-player');
   
-  // Jeu
   DOM.overlayLeft = document.getElementById('overlay-left');
   DOM.overlayRight = document.getElementById('overlay-right');
   DOM.scoreDisplay = document.getElementById('score-display');
@@ -167,13 +96,12 @@ function queryDOMElements() {
   DOM.cardElement = document.getElementById('card');
   DOM.cardImage = document.getElementById('card-image');
   DOM.cardText = document.getElementById('card-text');
-  DOM.arrowBtnContainer = document.querySelector('.arrow-btn-container'); // REFACTOR
+  DOM.arrowBtnContainer = document.querySelector('.arrow-btn-container');
   DOM.btnArrowLeft = document.getElementById('btn-arrow-left');
   DOM.btnArrowRight = document.getElementById('btn-arrow-right');
-  DOM.btnZoomCard = document.getElementById('btn-zoom-card'); // AJOUT
+  DOM.btnZoomCard = document.getElementById('btn-zoom-card');
   DOM.messageBox = document.getElementById('message-box');
   
-  // Écran de fin
   DOM.endOverlay = document.getElementById('end-overlay');
   DOM.gaugeCircle = document.getElementById('gauge-circle');
   DOM.gaugePercentage = document.getElementById('gauge-percentage');
@@ -184,41 +112,33 @@ function queryDOMElements() {
   DOM.btnReplay = document.getElementById('btn-replay');
   DOM.btnViewScoresFromGame = document.getElementById('btn-view-scores-from-game');
   
-  // Écran Scores
   DOM.btnBackFromScores = document.getElementById('btn-back-from-scores');
   DOM.scoreFilterButtons = document.getElementById('score-filter-buttons');
-  DOM.btnFilterAll = document.getElementById('btn-filter-all'); // REFACTOR: Ajout d'un ID pour le bouton "Tous"
+  DOM.btnFilterAll = document.getElementById('btn-filter-all');
   DOM.scoresList = document.getElementById('scores-list');
 
-  // Écran Admin (Soluce)
   DOM.btnToggleEdit = document.getElementById('btn-toggle-edit');
   DOM.btnAddDeck = document.getElementById('btn-add-deck');
-  // AJOUT DES NOUVEAUX BOUTONS
   DOM.btnExportData = document.getElementById('btn-export-data');
   DOM.btnImportData = document.getElementById('btn-import-data');
   DOM.importFileInput = document.getElementById('import-file-input');
-  // FIN AJOUT
   DOM.btnBackFromSoluceAdmin = document.getElementById('btn-back-from-soluce-admin');
   DOM.soluceGalleryContainer = document.getElementById('soluce-gallery-container');
   DOM.soluceInfoText = document.getElementById('soluce-info-text');
 
-  // Écran Soluce Publique
   DOM.btnBackFromPublicSoluce = document.getElementById('btn-back-from-public-soluce');
   DOM.publicSoluceGalleryContainer = document.getElementById('public-soluce-gallery-container');
 
-  // Modale Image
   DOM.imageModal = document.getElementById('image-modal');
   DOM.modalImage = document.getElementById('modal-image');
   DOM.btnCloseImageModal = document.getElementById('btn-close-image-modal');
 
-  // Modale Mot de Passe
   DOM.passwordModal = document.getElementById('password-modal');
   DOM.passwordInput = document.getElementById('password-input');
   DOM.passwordError = document.getElementById('password-error');
   DOM.btnCheckPassword = document.getElementById('btn-check-password');
   DOM.btnClosePasswordModal = document.getElementById('btn-close-password-modal');
 
-  // Modale Édition Carte
   DOM.editCardModal = document.getElementById('edit-card-modal');
   DOM.editModalTitle = document.getElementById('edit-modal-title');
   DOM.cardForm = document.getElementById('card-form');
@@ -233,7 +153,6 @@ function queryDOMElements() {
   DOM.btnDeleteCard = document.getElementById('btn-delete-card');
   DOM.btnCancelEditCard = document.getElementById('btn-cancel-edit-card');
 
-  // Modale Édition Deck
   DOM.deckModal = document.getElementById('deck-modal');
   DOM.deckForm = document.getElementById('deck-form');
   DOM.deckModalTitle = document.getElementById('deck-modal-title');
@@ -247,7 +166,6 @@ function queryDOMElements() {
   DOM.btnCancelDeck = document.getElementById('btn-cancel-deck');
   DOM.btnCloseDeckModal = document.getElementById('btn-close-deck-modal');
 
-  // AJOUT: Nouvelle modale d'alerte/confirmation
   DOM.alertModal = document.getElementById('alert-modal');
   DOM.alertModalTitle = document.getElementById('alert-modal-title');
   DOM.alertModalText = document.getElementById('alert-modal-text');
@@ -255,36 +173,21 @@ function queryDOMElements() {
   DOM.btnCloseAlertModal = document.getElementById('btn-close-alert-modal');
 }
 
-/**
- * REFACTOR: Initialise tous les auditeurs d'événements de l'application.
- * Appelée une seule fois au démarrage.
- */
 function initEventListeners() {
-  // Header
   DOM.btnHeaderAdmin.addEventListener('click', openPasswordModal);
-
-  // Intro
   DOM.btnStart.addEventListener('click', continueToDecks);
   DOM.btnViewScores.addEventListener('click', () => showScoresScreen(DOM.introScreen));
   
-  // Sélection Deck
   DOM.btnViewScoresFromDeck.addEventListener('click', () => showScoresScreen(DOM.deckScreen));
   DOM.btnViewPublicSoluce.addEventListener('click', showPublicSoluce);
   DOM.btnChangePlayer.addEventListener('click', () => showScreen(DOM.introScreen));
 
-  // Jeu
   DOM.btnQuitGame.addEventListener('click', quitGame);
-  
-  // CORRECTION: L'écouteur 'click' est restauré.
-  // Il est séparé de la logique de 'drag'.
   DOM.cardElement.addEventListener('click', () => {
-    // N'ouvre la modale que si l'image n'est pas le placeholder par défaut
     if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
       openModal(DOM.cardImage.src);
     }
   });
-  
-  // AJOUT: Le bouton zoom gère maintenant le clic
   DOM.btnZoomCard.addEventListener('click', () => {
     if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
       openModal(DOM.cardImage.src);
@@ -294,18 +197,15 @@ function initEventListeners() {
   DOM.btnArrowLeft.addEventListener('click', () => handleDecision('left'));
   DOM.btnArrowRight.addEventListener('click', () => handleDecision('right'));
   
-  // Événements de Drag/Swipe
   DOM.cardElement.addEventListener('touchstart', onDragStart, { passive: true });
   DOM.cardElement.addEventListener('touchmove', onDragMove, { passive: true });
   DOM.cardElement.addEventListener('touchend', onDragEnd);
   DOM.cardElement.addEventListener('mousedown', onDragStart);
-  document.addEventListener('mousemove', onDragMove); // Écoute sur tout le document
-  document.addEventListener('mouseup', onDragEnd);     // Écoute sur tout le document
+  document.addEventListener('mousemove', onDragMove);
+  document.addEventListener('mouseup', onDragEnd);
   
-  // Événements de clavier
   document.addEventListener('keydown', onKeyDown);
 
-  // Écran de fin
   DOM.btnChooseDeck.addEventListener('click', () => {
     DOM.endOverlay.classList.add('hidden');
     showScreen(DOM.deckScreen);
@@ -316,33 +216,25 @@ function initEventListeners() {
   });
   DOM.btnViewScoresFromGame.addEventListener('click', () => showScoresScreen(DOM.gameScreen));
 
-  // Écran Scores
   DOM.btnBackFromScores.addEventListener('click', () => {
-    // Retourne à l'écran mémorisé, ou au deckScreen par défaut
     showScreen(state.previousScreen || DOM.deckScreen);
   });
   DOM.btnFilterAll.addEventListener('click', (e) => filterScores('all', e.target));
 
-  // Écran Admin
   DOM.btnToggleEdit.addEventListener('click', toggleEditingMode);
   DOM.btnAddDeck.addEventListener('click', () => openDeckModal(null));
-  // AJOUT DES NOUVEAUX ÉVÉNEMENTS
   DOM.btnExportData.addEventListener('click', exportData);
-  DOM.btnImportData.addEventListener('click', () => DOM.importFileInput.click()); // Ouvre le sélecteur de fichier
-  DOM.importFileInput.addEventListener('change', importData); // Gère le fichier sélectionné
-  // FIN AJOUT
+  DOM.btnImportData.addEventListener('click', () => DOM.importFileInput.click());
+  DOM.importFileInput.addEventListener('change', importData);
   DOM.btnBackFromSoluceAdmin.addEventListener('click', () => showScreen(DOM.deckScreen));
 
-  // Écran Soluce Publique
   DOM.btnBackFromPublicSoluce.addEventListener('click', () => showScreen(DOM.deckScreen));
   
-  // Modale Image
   DOM.imageModal.addEventListener('click', (e) => {
     if (e.target.id === 'image-modal') closeModal(DOM.imageModal);
   });
   DOM.btnCloseImageModal.addEventListener('click', () => closeModal(DOM.imageModal));
 
-  // Modale Mot de Passe
   DOM.passwordModal.addEventListener('click', (e) => {
     if (e.target.id === 'password-modal') closeModal(DOM.passwordModal);
   });
@@ -352,7 +244,6 @@ function initEventListeners() {
     if (e.key === 'Enter') checkPassword();
   });
 
-  // Modale Édition Carte
   DOM.editCardModal.addEventListener('click', (e) => {
     if (e.target.id === 'edit-card-modal') closeModal(DOM.editCardModal);
   });
@@ -360,7 +251,6 @@ function initEventListeners() {
   DOM.btnDeleteCard.addEventListener('click', deleteCard);
   DOM.btnCancelEditCard.addEventListener('click', () => closeModal(DOM.editCardModal));
 
-  // Modale Édition Deck
   DOM.deckModal.addEventListener('click', (e) => {
     if (e.target.id === 'deck-modal') closeModal(DOM.deckModal);
   });
@@ -374,18 +264,13 @@ function initEventListeners() {
     });
   });
 
-  // AJOUT: Événements pour la nouvelle modale d'alerte
   DOM.alertModal.addEventListener('click', (e) => {
     if (e.target.id === 'alert-modal') closeModal(DOM.alertModal);
   });
   DOM.btnCloseAlertModal.addEventListener('click', () => closeModal(DOM.alertModal));
 }
 
-// ------------------------------------
-// --- GESTION DU STOCKAGE (localStorage) ---
-// ------------------------------------
-
-// CORRECTION: Bloc de fonctions restauré
+// --- STOCKAGE ---
 function loadPersistentData() {
   PERSISTENT_DECKS = loadDecks();
   PERSISTENT_DECK_INFO = loadDeckInfo();
@@ -397,7 +282,7 @@ function loadDecks() {
     try {
       return JSON.parse(storedDecks);
     } catch (e) {
-      console.error("Erreur lors du chargement des decks, réinitialisation.");
+      console.error("Erreur chargement decks, réinit.");
       return migrateInitialDecks();
     }
   }
@@ -424,12 +309,12 @@ function migrateInitialDecks() {
       soluceLink: card.soluceLink || ""
     }))
   );
-  saveDecks(decksWithIds); // Sauvegarde directe
+  saveDecks(decksWithIds);
   return decksWithIds;
 }
 
 function migrateInitialDeckInfo() {
-  saveDeckInfoToStorage(DEFAULT_DECK_INFO); // Sauvegarde directe
+  saveDeckInfoToStorage(DEFAULT_DECK_INFO);
   return DEFAULT_DECK_INFO;
 }
 
@@ -440,131 +325,80 @@ function saveDecks(decks) {
 function saveDeckInfoToStorage(info) {
   localStorage.setItem(DECK_INFO_KEY, JSON.stringify(info));
 }
-// FIN DU BLOC RESTAURÉ
 
 function getScores() {
   return JSON.parse(localStorage.getItem('game_scores') || '[]');
 }
 
-// ------------------------------------
-// --- IMPORT/EXPORT DES DONNÉES ---
-// ------------------------------------
-
-/**
- * Exporte toutes les données des decks (cartes et infos)
- * dans un fichier JSON téléchargeable.
- */
+// --- IMPORT/EXPORT ---
 function exportData() {
-  console.log("Exportation des données...");
+  console.log("Export données...");
   try {
-    // 1. Créer l'objet de données
-    const data = {
-      decks: PERSISTENT_DECKS,
-      info: PERSISTENT_DECK_INFO
-    };
-    
-    // 2. Convertir en chaîne JSON (avec formatage pour lisibilité)
+    const data = { decks: PERSISTENT_DECKS, info: PERSISTENT_DECK_INFO };
     const dataString = JSON.stringify(data, null, 2);
-    
-    // 3. Créer un Blob (fichier en mémoire)
     const blob = new Blob([dataString], { type: 'application/json' });
-    
-    // 4. Créer un lien de téléchargement
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    // Génère un nom de fichier avec la date, ex: torg_beta_backup_2025-11-09.json
     a.download = `torg_beta_backup_${new Date().toISOString().split('T')[0]}.json`;
-    
-    // 5. Simuler le clic, télécharger, puis nettoyer
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
   } catch (error) {
-    console.error("Erreur lors de l'exportation:", error);
-    // REMPLACEMENT: alert -> showAlert
-    showAlert("Erreur", "Échec de l'exportation des données.", "error");
+    console.error("Erreur export:", error);
+    showAlert("Erreur", "Échec de l'exportation.", "error");
   }
 }
 
-/**
- * Gère l'importation d'un fichier JSON de données.
- * Appelé par l'événement 'change' de l'input file.
- * @param {Event} event - L'événement de changement de l'input file.
- */
 function importData(event) {
   const file = event.target.files[0];
-  if (!file) {
-    console.log("Aucun fichier sélectionné.");
-    return;
-  }
+  if (!file) return;
   
   const reader = new FileReader();
-  
   reader.onload = (e) => {
     try {
-      // 1. Lire et analyser le contenu du fichier
       const content = e.target.result;
       const data = JSON.parse(content);
       
-      // 2. Valider la structure du fichier
       if (data && Array.isArray(data.decks) && Array.isArray(data.info)) {
-        
         const totalDecks = data.info.length;
         const totalCards = data.decks.reduce((sum, deck) => sum + (deck ? deck.length : 0), 0);
         
-        // 3. REMPLACEMENT: confirm -> showConfirm (logique asynchrone)
-        
-        // Étape 3a: Définir ce qu'il faut faire si l'utilisateur confirme
         const onConfirmImport = () => {
-          // 4. Sauvegarder les nouvelles données dans localStorage
           saveDecks(data.decks);
           saveDeckInfoToStorage(data.info);
-          
-          // 5. Recharger l'état de l'application et rafraîchir l'interface
-          loadPersistentData(); // Met à jour les variables globales
-          regenerateAllDynamicContent(); // Redessine toute l'UI
-          
-          // REMPLACEMENT: alert -> showAlert
-          showAlert("Importation Réussie", "Les nouveaux decks sont chargés.", "success");
+          loadPersistentData();
+          regenerateAllDynamicContent();
+          showAlert("Import Réussi", "Nouveaux decks chargés.", "success");
         };
         
-        // Étape 3b: Afficher la modale de confirmation
         showConfirm(
-          "Confirmer l'importation",
-          `Vous allez importer ${totalDecks} deck(s) et ${totalCards} carte(s).\n\nATTENTION: Cela écrasera et remplacera toutes les données actuelles. Continuer ?`,
+          "Confirmer l'import",
+          `Import ${totalDecks} deck(s) et ${totalCards} carte(s).\n\nATTENTION: Écrase les données actuelles. Continuer ?`,
           onConfirmImport
         );
-        
       } else {
-        throw new Error("Structure de fichier invalide. Le JSON doit contenir les clés 'decks' et 'info' (tableaux).");
+        throw new Error("Structure JSON invalide.");
       }
     } catch (error) {
-      console.error("Erreur lors de l'importation:", error);
-      // REMPLACEMENT: alert -> showAlert
-      showAlert("Erreur d'importation", `Échec: ${error.message}`, "error");
+      console.error("Erreur import:", error);
+      showAlert("Erreur d'import", `Échec: ${error.message}`, "error");
     } finally {
-      // Réinitialiser le champ de fichier pour permettre de réimporter le même fichier
       event.target.value = null;
     }
   };
   
   reader.onerror = (error) => {
-     console.error("Erreur de lecture du fichier:", error);
-     // REMPLACEMENT: alert -> showAlert
-     showAlert("Erreur", "Échec de la lecture du fichier.", "error");
+     console.error("Erreur lecture fichier:", error);
+     showAlert("Erreur", "Échec lecture fichier.", "error");
      event.target.value = null;
   };
   
   reader.readAsText(file);
 }
 
-// ------------------------------------
-// --- NAVIGATION & GESTION DES ÉCRANS ---
-// ------------------------------------
-
+// --- NAVIGATION ---
 function showScreen(screenEl) {
   const mainScreens = [
     DOM.introScreen, DOM.deckScreen, DOM.gameScreen, 
@@ -573,74 +407,66 @@ function showScreen(screenEl) {
   
   mainScreens.forEach(s => {
     s.classList.add('hidden-screen');
-    // s.style.opacity = 0; // Opacité gérée par 'hidden-screen'
+    s.classList.remove('active');
   });
 
-  // S'assurer que les modales sont cachées
   closeModal(DOM.imageModal);
   closeModal(DOM.passwordModal);
   closeModal(DOM.editCardModal);
   closeModal(DOM.deckModal);
-  closeModal(DOM.alertModal); // AJOUT
+  closeModal(DOM.alertModal);
 
   screenEl.classList.remove('hidden-screen');
-  // requestAnimationFrame(() => screenEl.style.opacity = 1); // Plus nécessaire
+  // AMÉLIORATION: Ajoute la classe 'active' après un court délai pour l'animation
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      screenEl.classList.add('active');
+    });
+  });
 }
 
 function showScoresScreen(prevScreen) {
-  state.previousScreen = prevScreen; // Mémorise l'écran d'où on vient
+  state.previousScreen = prevScreen;
   renderScores();
   showScreen(DOM.scoresScreen);
 }
 
 function showAllSoluce() {
-  // Montre tous les titres et conteneurs
   DOM.soluceGalleryContainer.querySelectorAll('.soluce-deck-title').forEach(el => el.style.display = 'flex');
   DOM.soluceGalleryContainer.querySelectorAll('.soluce-deck-content').forEach(el => {
     el.classList.remove('hidden-soluce');
   });
   
-  state.isEditingMode = false;
-  updateSoluceDisplayModes(); // Réinitialise les modes
+  // MODIFICATION: Ne pas réinitialiser le mode édition
+  // state.isEditingMode = false;
+  updateSoluceDisplayModes();
   showScreen(DOM.soluceScreen);
 }
 
 function showPublicSoluce() {
-  regeneratePublicSoluce(); // S'assure que la galerie publique est à jour
+  regeneratePublicSoluce();
   showScreen(DOM.publicSoluceScreen);
 }
 
-// ------------------------------------
-// --- GÉNÉRATION D'UI DYNAMIQUE ---
-// ------------------------------------
-
-/**
- * REFACTOR: Fonction centrale pour (re)générer tout le contenu
- * dépendant des données persistantes.
- */
+// --- GÉNÉRATION UI DYNAMIQUE ---
 function regenerateAllDynamicContent() {
   generateDeckSelectionScreen();
   generateSoluceContainers();
   generatePublicSoluceContainers();
   generateScoreFilters();
   
-  // Met à jour la liste des decks dans la modale d'édition
   DOM.editDeckSelect.innerHTML = '';
   PERSISTENT_DECK_INFO.forEach((info, index) => {
     DOM.editDeckSelect.innerHTML += `<option value="${index}">${info.emoji} ${info.name}</option>`;
   });
 }
 
-/**
- * REFACTOR: Renommée pour être plus claire.
- * Utilise `document.createElement` pour plus de sécurité et de clarté.
- */
 function regeneratePublicSoluce() {
   generatePublicSoluceContainers();
 }
 
 function generateDeckSelectionScreen() {
-  DOM.deckSelectionGrid.innerHTML = ''; // Vide la grille
+  DOM.deckSelectionGrid.innerHTML = '';
   
   PERSISTENT_DECK_INFO.forEach((deckInfo, index) => {
     const cardCount = (PERSISTENT_DECKS[index] || []).length;
@@ -660,7 +486,6 @@ function generateDeckSelectionScreen() {
 }
 
 function generateScoreFilters() {
-  // Vider les anciens filtres (sauf le bouton 'Tous')
   DOM.scoreFilterButtons.querySelectorAll('.filter-btn:not(#btn-filter-all)').forEach(btn => btn.remove());
   
   PERSISTENT_DECK_INFO.forEach((deckInfo, index) => {
@@ -672,21 +497,16 @@ function generateScoreFilters() {
   });
 }
 
-/**
- * REFACTOR: Utilise `createElement` pour créer les vignettes.
- * C'est plus verbeux mais beaucoup plus propre.
- */
 function generateSoluceContainers() {
-  DOM.soluceGalleryContainer.innerHTML = ''; // Nettoyer l'ancien contenu
+  DOM.soluceGalleryContainer.innerHTML = '';
 
   PERSISTENT_DECKS.forEach((deck, deckIndex) => {
     const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
     if (!deckInfo) {
-      console.warn(`Pas d'info pour le deck ${deckIndex}, le deck sera ignoré.`);
+      console.warn(`Pas d'info deck ${deckIndex}`);
       return;
     }
     
-    // Crée le titre du Deck
     const titleEl = document.createElement('h4');
     titleEl.className = `soluce-deck-title ${deckInfo.titleColor}`;
     titleEl.innerHTML = `${deckInfo.emoji} ${deckInfo.name} (${(deck || []).length} cartes)`;
@@ -701,18 +521,15 @@ function generateSoluceContainers() {
     titleEl.appendChild(editBtn);
     DOM.soluceGalleryContainer.appendChild(titleEl);
 
-    // Crée le conteneur spécifique du Deck
     const cardsContainer = document.createElement('div');
     cardsContainer.id = `soluce-deck-${deckIndex}`;
     cardsContainer.className = 'soluce-deck-content hidden-soluce';
     DOM.soluceGalleryContainer.appendChild(cardsContainer);
     
-    // Ajoute les cartes
     (deck || []).forEach(card => {
       cardsContainer.appendChild(createSoluceCardVignette(card, deckInfo, deckIndex));
     });
     
-    // Ajoute le bouton "Ajouter une carte"
     cardsContainer.appendChild(createAddCardVignette(deckIndex));
   });
   
@@ -720,37 +537,27 @@ function generateSoluceContainers() {
 }
 
 function generatePublicSoluceContainers() {
-  DOM.publicSoluceGalleryContainer.innerHTML = ''; // Nettoyer l'ancien contenu
+  DOM.publicSoluceGalleryContainer.innerHTML = '';
 
   PERSISTENT_DECKS.forEach((deck, deckIndex) => {
     const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
-    if (!deckInfo) return; // Ignore les decks sans info
+    if (!deckInfo) return;
     
-    // Crée le titre du Deck
     const titleEl = document.createElement('h4');
     titleEl.className = `soluce-deck-title ${deckInfo.titleColor}`;
     titleEl.innerHTML = `${deckInfo.emoji} ${deckInfo.name} (${(deck || []).length} cartes)`;
     DOM.publicSoluceGalleryContainer.appendChild(titleEl);
 
-    // Crée le conteneur spécifique du Deck
     const cardsContainer = document.createElement('div');
     cardsContainer.className = 'soluce-deck-content';
     DOM.publicSoluceGalleryContainer.appendChild(cardsContainer);
     
-    // Ajoute les cartes (en mode public/consultation)
     (deck || []).forEach(card => {
       cardsContainer.appendChild(createSoluceCardVignette(card, deckInfo, deckIndex, true));
     });
   });
 }
 
-/**
- * REFACTOR: Crée une vignette de carte pour la galerie (Admin ou Publique)
- * @param {object} card - L'objet carte
- * @param {object} deckInfo - Les métadonnées du deck
- * @param {number} deckIndex - L'index du deck
- * @param {boolean} [isPublic=false] - Si vrai, génère une vignette publique (sans édition)
- */
 function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
   const el = document.createElement('div');
   el.className = 'soluce-gallery-item flex flex-col justify-between p-2 glass rounded-lg border-2 ' + deckInfo.cardBorder;
@@ -759,7 +566,6 @@ function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
   
   const hasSoluceLink = card.soluceLink && card.soluceLink.trim() !== "";
   
-  // Gestion du clic
   el.addEventListener('click', () => {
     if (!isPublic && state.isEditingMode) {
       openEditModal(deckIndex, card.id);
@@ -770,7 +576,6 @@ function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
     }
   });
   
-  // Conteneur d'image (pour le fond)
   const imageContainer = document.createElement('div');
   imageContainer.className = 'w-full h-2/3 object-cover rounded-md mb-1 soluce-gallery-item-image-container';
   imageContainer.style.backgroundImage = `url('${card.img}')`;
@@ -787,7 +592,7 @@ function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
   const textDiv = document.createElement('div');
   textDiv.className = 'text-xs font-semibold text-gray-200 truncate';
   textDiv.title = card.text;
-  textDiv.textContent = card.text.split(' (')[0] || "Carte sans texte"; // Fallback
+  textDiv.textContent = card.text.split(' (')[0] || "Carte sans texte";
   
   const correctDiv = document.createElement('div');
   correctDiv.className = `text-[10px] ${colorClass}`;
@@ -805,14 +610,10 @@ function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
   return el;
 }
 
-/**
- * REFACTOR: Crée la vignette "+" pour ajouter une carte
- * @param {number} deckIndex - L'index du deck auquel ajouter la carte
- */
 function createAddCardVignette(deckIndex) {
   const addCardEl = document.createElement('div');
   addCardEl.className = 'soluce-gallery-item add-card-btn';
-  addCardEl.style.display = 'none'; // Caché par défaut
+  addCardEl.style.display = 'none';
   addCardEl.addEventListener('click', () => openEditModal(deckIndex, null));
   addCardEl.innerHTML = `
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -822,10 +623,7 @@ function createAddCardVignette(deckIndex) {
   return addCardEl;
 }
 
-// ------------------------------------
-// --- LOGIQUE DU JEU ---
-// ------------------------------------
-
+// --- LOGIQUE JEU ---
 function continueToDecks() {
   const name = (DOM.playerNameInput.value || '').trim();
   if (!name) {
@@ -841,11 +639,10 @@ function continueToDecks() {
 }
 
 function selectDeck(deckIndex) {
-  // Vérifie si le deck a assez de cartes
   if (!PERSISTENT_DECKS[deckIndex] || PERSISTENT_DECKS[deckIndex].length < MAX_CARDS) {
     showAlert(
       "Deck incomplet",
-      `Ce deck n'a que ${PERSISTENT_DECKS[deckIndex]?.length || 0} cartes. Il en faut au moins ${MAX_CARDS} pour jouer.`,
+      `Ce deck n'a que ${PERSISTENT_DECKS[deckIndex]?.length || 0} cartes. Il en faut ${MAX_CARDS}.`,
       "warning"
     );
     return;
@@ -855,15 +652,12 @@ function selectDeck(deckIndex) {
 }
 
 function startGame() {
-  state.resultsRecap = []; // Réinitialise les résultats
+  state.resultsRecap = [];
   
   const fullDeck = PERSISTENT_DECKS[state.currentDeck];
   const shuffledDeck = shuffleArray(fullDeck);
   
-  // Stocke une référence ID unique
   state.currentDeckCards = shuffledDeck.slice(0, MAX_CARDS).map(c => ({ id: c.id })); 
-  
-  // AJOUT: Précharger les images du jeu
   preloadGameImages(state.currentDeckCards);
   
   state.game = { score: 0, cardIndex: 0, isProcessing: false };
@@ -872,18 +666,14 @@ function startGame() {
   showScreen(DOM.gameScreen);
 }
 
-/**
- * AJOUT: Précharge les images pour la partie en cours.
- * @param {Array} cardRefs - Tableau des références de cartes (ex: [{id: '...'}])
- */
 function preloadGameImages(cardRefs) {
   const fullDeck = PERSISTENT_DECKS[state.currentDeck];
   
   cardRefs.forEach(ref => {
     const card = fullDeck.find(c => c.id === ref.id);
     if (card && card.img) {
-      const img = new Image(); // Crée un objet Image en mémoire
-      img.src = card.img;       // Déclenche le téléchargement
+      const img = new Image();
+      img.src = card.img;
     }
   });
 }
@@ -892,13 +682,11 @@ function endGame() {
   state.game.isProcessing = true;
   const pct = Math.round((state.game.score / MAX_CARDS) * 100);
   saveScore(state.playerName, state.currentDeck, state.game.score, pct);
-  displayErrorRecap(); // Affiche le récapitulatif
-  updateUI(); // Met à jour l'UI (qui masquera la carte)
+  displayErrorRecap();
+  updateUI();
   state.game.isProcessing = false;
   DOM.endOverlay.classList.remove('hidden');
-  // DOM.endOverlay.style.opacity = 1; // Plus nécessaire
   
-  // Animer la jauge
   const circumference = 2 * Math.PI * 80;
   const offset = circumference - (pct / 100) * circumference;
   setTimeout(() => DOM.gaugeCircle.style.strokeDashoffset = offset, 100);
@@ -920,17 +708,15 @@ function handleDecision(decision) {
   const currentCardRef = state.currentDeckCards[state.game.cardIndex];
   const cur = PERSISTENT_DECKS[state.currentDeck].find(c => c.id === currentCardRef.id);
   
-  // Si la carte n'existe plus (ex: supprimée pendant le jeu), on passe
   if (!cur) {
     state.game.cardIndex++;
     state.game.isProcessing = false;
-    displayCard(); // Affiche la carte suivante
+    displayCard();
     return;
   }
 
   const isCorrect = decision === cur.correct; 
   
-  // Stocke le résultat
   currentCardRef.isCorrect = isCorrect; 
   currentCardRef.img = cur.img;
   currentCardRef.text = cur.text;
@@ -938,17 +724,20 @@ function handleDecision(decision) {
   
   if (!isCorrect) {
     state.game.score++;
-    DOM.cardElement.style.borderColor = '#EF4444'; // Rouge
-  } else {
-    DOM.cardElement.style.borderColor = '#10B981'; // Vert
   }
   
-  // Feedback visuel (dégradé)
+  // MODIFICATION: Suppression du feedback rouge/vert sur la carte
+  // DOM.cardElement.style.borderColor = isCorrect ? '#10B981' : '#EF4444';
+  
+  // AMÉLIORATION: Feedback haptique sur mobile
+  triggerHapticFeedback(isCorrect);
+  
+  // Feedback visuel overlay
   if (decision === 'left') {
-    DOM.overlayLeft.style.opacity = '0.5';
+    DOM.overlayLeft.style.opacity = '0.6';
     DOM.overlayLeft.style.transition = 'opacity 0.2s ease-out';
   } else {
-    DOM.overlayRight.style.opacity = '0.5';
+    DOM.overlayRight.style.opacity = '0.6';
     DOM.overlayRight.style.transition = 'opacity 0.2s ease-out';
   }
   
@@ -959,11 +748,10 @@ function handleDecision(decision) {
     DOM.cardElement.classList.remove(slideClass);
     state.game.cardIndex++;
     
-    // Réinitialisation des dégradés
     DOM.overlayLeft.style.opacity = '0';
     DOM.overlayRight.style.opacity = '0';
-    DOM.overlayLeft.style.transition = 'opacity 0.1s linear';
-    DOM.overlayRight.style.transition = 'opacity 0.1s linear';
+    DOM.overlayLeft.style.transition = 'opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
+    DOM.overlayRight.style.transition = 'opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
     
     if (state.game.cardIndex < MAX_CARDS) {
       updateUI();
@@ -975,18 +763,26 @@ function handleDecision(decision) {
   }, 360);
 }
 
-// ------------------------------------
-// --- LOGIQUE DE DRAG/SWIPE ---
-// ------------------------------------
+// NOUVEAU: Feedback haptique
+function triggerHapticFeedback(isCorrect) {
+  if ('vibrate' in navigator) {
+    if (isCorrect) {
+      navigator.vibrate(50); // Courte vibration pour succès
+    } else {
+      navigator.vibrate([100, 50, 100]); // Pattern pour erreur
+    }
+  }
+}
 
+// --- DRAG/SWIPE AVEC RAF ---
 function onDragStart(e) {
   if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS || isModalOpen()) return;
 
   if (e.type === 'mousedown') {
     state.drag.isMouseDown = true;
     state.drag.startX = e.clientX;
-    e.preventDefault(); // CORRECTION RÉTATBLIE
-  } else { // touchstart
+    e.preventDefault();
+  } else {
     state.drag.isDragging = true;
     state.drag.startX = e.touches[0].clientX;
   }
@@ -1001,26 +797,32 @@ function onDragMove(e) {
 
   if (e.type === 'mousemove') {
     state.drag.currentX = e.clientX;
-  } else { // touchmove
+  } else {
     state.drag.currentX = e.touches[0].clientX;
   }
   
-  const dx = state.drag.currentX - state.drag.startX;
-  let rot = (dx / MAX_DISP) * MAX_ROT;
-  rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, rot));
+  // AMÉLIORATION: Utilise RAF pour des animations fluides
+  if (state.animationFrameId) {
+    cancelAnimationFrame(state.animationFrameId);
+  }
   
-  DOM.cardElement.style.transform = `translateX(${dx}px) rotate(${rot}deg)`;
-  updateVisualFeedback(dx); 
+  state.animationFrameId = requestAnimationFrame(() => {
+    const dx = state.drag.currentX - state.drag.startX;
+    let rot = (dx / MAX_DISP) * MAX_ROT;
+    rot = Math.max(-MAX_ROT, Math.min(MAX_ROT, rot));
+    
+    DOM.cardElement.style.transform = `translateX(${dx}px) rotate(${rot}deg)`;
+    updateVisualFeedback(dx);
+  });
 }
 
-// CORRECTION: Logique restaurée de 'alpha.html'
 function onDragEnd(e) {
   if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
 
   const isMouseUp = e.type === 'mouseup';
   if (isMouseUp) {
     state.drag.isMouseDown = false;
-  } else { // touchend
+  } else {
     state.drag.isDragging = false;
   }
 
@@ -1028,56 +830,47 @@ function onDragEnd(e) {
   const dx = state.drag.currentX - state.drag.startX;
   state.drag.startX = 0;
 
-  // Si c'est un "tap" (mobile), on annule et on laisse le 'click' listener gérer le zoom.
   if (Math.abs(dx) < 10 && !isMouseUp) {
-    DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s';
-    DOM.cardElement.style.transform = 'none'; // Snap back
+    DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s';
+    DOM.cardElement.style.transform = 'none';
     return;
   }
   
-  DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s'; 
+  DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s'; 
   updateVisualFeedback(0); 
   
-  // Si c'est un "clic" (souris), on annule et on laisse le 'click' listener gérer le zoom.
   if (Math.abs(dx) < 10 && isMouseUp) {
      DOM.cardElement.style.transform = 'none';
      return;
   }
   
-  // Si le mouvement est suffisant, c'est un swipe
   if (dx > SWIPE_THRESHOLD) handleDecision('right');
   else if (dx < -SWIPE_THRESHOLD) handleDecision('left');
   else DOM.cardElement.style.transform = 'none';
 }
     
 function onKeyDown(e) {
-  // Gérer les touches fléchées pour le jeu
   if (!DOM.gameScreen.classList.contains('hidden-screen')) {
-    if (isModalOpen()) return; // Ne pas jouer si une modale est ouverte
+    if (isModalOpen()) return;
     if (e.key === 'ArrowLeft') handleDecision('left');
     if (e.key === 'ArrowRight') handleDecision('right');
   }
   
-  // Gérer la touche Échap pour fermer les modales
   if (e.key === 'Escape') {
     if (DOM.imageModal.classList.contains('active')) closeModal(DOM.imageModal);
     else if (DOM.passwordModal.classList.contains('active')) closeModal(DOM.passwordModal);
     else if (DOM.editCardModal.classList.contains('active')) closeModal(DOM.editCardModal);
     else if (DOM.deckModal.classList.contains('active')) closeModal(DOM.deckModal);
-    else if (DOM.alertModal.classList.contains('active')) closeModal(DOM.alertModal); // AJOUT
+    else if (DOM.alertModal.classList.contains('active')) closeModal(DOM.alertModal);
   }
 }
 
-
-// ------------------------------------
-// --- FONCTIONS ADMIN & ÉDITION ---
-// ------------------------------------
-
+// --- ADMIN & ÉDITION ---
 function checkPassword() {
   const inputCode = DOM.passwordInput.value;
   if (inputCode === SOLUCE_PASSWORD) {
     closeModal(DOM.passwordModal);
-    showAllSoluce(); // Affiche la soluce complète
+    showAllSoluce();
   } else {
     DOM.passwordError.classList.remove('hidden');
     DOM.passwordInput.value = '';
@@ -1091,12 +884,10 @@ function toggleEditingMode() {
 }
 
 function updateSoluceDisplayModes() {
-  // Met à jour les vignettes de carte
   DOM.soluceGalleryContainer.querySelectorAll('.soluce-gallery-item:not(.add-card-btn)').forEach(item => {
     item.classList.toggle('editing-mode', state.isEditingMode);
   });
   
-  // Met à jour les boutons
   DOM.btnToggleEdit.textContent = state.isEditingMode ? "Quitter l'édition" : "Activer l'édition";
   DOM.btnAddDeck.style.display = state.isEditingMode ? 'block' : 'none';
   DOM.btnExportData.style.display = state.isEditingMode ? 'block' : 'none';
@@ -1109,21 +900,98 @@ function updateSoluceDisplayModes() {
     btn.style.display = state.isEditingMode ? 'inline' : 'none';
   });
 
-  // Met à jour le texte d'information
   if (state.isEditingMode) {
-    DOM.soluceInfoText.textContent = "Mode ÉDITION ACTIF : Cliquez sur une carte pour la modifier ou la supprimer, ou utilisez le bouton 'Ajouter une carte'.";
+    DOM.soluceInfoText.textContent = "Mode ÉDITION : Cliquez sur une carte pour modifier/supprimer, ou 'Ajouter une carte'.";
   } else {
-    DOM.soluceInfoText.textContent = "Mode CONSULTATION : Cliquez sur une vignette pour agrandir l'image. Si un lien Soluce (🔗) est présent, le clic ouvrira le lien.";
+    DOM.soluceInfoText.textContent = "Mode CONSULTATION : Cliquez pour agrandir. Si lien Soluce (🔗), le clic ouvre le lien.";
   }
+}
+
+// AMÉLIORATION: Drag & Drop pour images
+function setupImageDropZone() {
+  // Crée la zone de drop si elle n'existe pas
+  let dropZone = document.getElementById('image-drop-zone');
+  
+  if (!dropZone) {
+    dropZone = document.createElement('div');
+    dropZone.id = 'image-drop-zone';
+    dropZone.className = 'drop-zone';
+    dropZone.innerHTML = `
+      <div class="drop-zone-text">
+        <p class="font-semibold mb-1">📎 Glissez une image ici</p>
+        <p class="text-xs">ou cliquez pour sélectionner</p>
+      </div>
+      <img id="drop-zone-preview" class="drop-zone-preview hidden" />
+    `;
+    
+    // Insère avant le champ URL
+    const imgInput = DOM.editCardImg;
+    imgInput.parentNode.insertBefore(dropZone, imgInput);
+  }
+  
+  const preview = document.getElementById('drop-zone-preview');
+  
+  // Clic pour ouvrir sélecteur
+  dropZone.addEventListener('click', (e) => {
+    if (e.target === preview) return; // Ne pas déclencher si on clique sur l'aperçu
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.onchange = (e) => handleImageFile(e.target.files[0], preview);
+    fileInput.click();
+  });
+  
+  // Drag & Drop
+  dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+  });
+  
+  dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+  });
+  
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleImageFile(file, preview);
+    } else {
+      showAlert("Fichier invalide", "Veuillez glisser une image.", "warning");
+    }
+  });
+}
+
+function handleImageFile(file, previewEl) {
+  const reader = new FileReader();
+  
+  reader.onload = (e) => {
+    const dataUrl = e.target.result;
+    DOM.editCardImg.value = dataUrl; // Remplit le champ URL avec la data URL
+    previewEl.src = dataUrl;
+    previewEl.classList.remove('hidden');
+  };
+  
+  reader.onerror = () => {
+    showAlert("Erreur", "Impossible de lire l'image.", "error");
+  };
+  
+  reader.readAsDataURL(file);
 }
 
 function openEditModal(deckIndex, cardId = null) {
   state.editingCardGlobalId = cardId;
   DOM.passwordModal.classList.remove('active');
+  
+  // AMÉLIORATION: Setup drop zone
+  setupImageDropZone();
+  
+  const preview = document.getElementById('drop-zone-preview');
 
   if (cardId === null) {
-    // MODE AJOUT
-    DOM.editModalTitle.textContent = 'Ajouter une nouvelle carte';
+    DOM.editModalTitle.textContent = 'Ajouter une carte';
     DOM.editCardId.value = '';
     DOM.editCardText.value = '';
     DOM.editCardImg.value = '';
@@ -1132,13 +1000,13 @@ function openEditModal(deckIndex, cardId = null) {
     DOM.editDeckSelect.value = deckIndex !== null ? deckIndex.toString() : '0';
     DOM.editDeckSelect.disabled = false;
     DOM.btnDeleteCard.style.display = 'none';
+    if (preview) preview.classList.add('hidden');
   } else {
-    // MODE ÉDITION
     const deck = PERSISTENT_DECKS[deckIndex];
     const card = deck.find(c => c.id === cardId);
     
     if (card) {
-      DOM.editModalTitle.textContent = 'Modifier la carte existante';
+      DOM.editModalTitle.textContent = 'Modifier la carte';
       DOM.editCardId.value = cardId;
       DOM.editCardDeckIndex.value = deckIndex;
       DOM.editCardText.value = card.text;
@@ -1146,8 +1014,14 @@ function openEditModal(deckIndex, cardId = null) {
       DOM.editCardSoluceLink.value = card.soluceLink || '';
       DOM.editCardCorrect.value = card.correct;
       DOM.editDeckSelect.value = deckIndex.toString();
-      DOM.editDeckSelect.disabled = true; // Empêche de changer le deck
+      DOM.editDeckSelect.disabled = true;
       DOM.btnDeleteCard.style.display = 'block';
+      
+      // Affiche l'aperçu de l'image existante
+      if (preview && card.img) {
+        preview.src = card.img;
+        preview.classList.remove('hidden');
+      }
     }
   }
   openModal(DOM.editCardModal);
@@ -1163,27 +1037,26 @@ function saveCard() {
 
   const newCard = { id, text, img, correct, soluceLink };
   
-  let decks = loadDecks(); // Charge la version la plus récente
+  let decks = loadDecks();
   
   if (state.editingCardGlobalId) {
-    // MODIFICATION
     const oldDeckIndex = parseInt(DOM.editCardDeckIndex.value);
     const cardIndex = decks[oldDeckIndex].findIndex(c => c.id === state.editingCardGlobalId);
     if (cardIndex !== -1) {
       decks[oldDeckIndex][cardIndex] = newCard;
     }
   } else {
-    // AJOUT
-    if (!decks[deckIndex]) decks[deckIndex] = []; // Crée le deck s'il n'existe pas
+    if (!decks[deckIndex]) decks[deckIndex] = [];
     decks[deckIndex].push(newCard);
   }
 
   saveDecks(decks);
-  PERSISTENT_DECKS = decks; // Met à jour l'état global
+  PERSISTENT_DECKS = decks;
   closeModal(DOM.editCardModal);
   
   regenerateAllDynamicContent();
-  showAllSoluce(); // Reste sur la page Admin
+  // MODIFICATION: Reste sur l'écran Admin en mode édition
+  showAllSoluce();
 }
 
 function deleteCard() {
@@ -1192,25 +1065,22 @@ function deleteCard() {
   
   if (!cardId || isNaN(deckIndex)) return;
   
-  // REMPLACEMENT: confirm -> showConfirm (logique asynchrone)
-  
-  // Étape 1: Définir ce qu'il faut faire en cas de confirmation
   const onConfirmDelete = () => {
     let decks = loadDecks();
     decks[deckIndex] = decks[deckIndex].filter(card => card.id !== cardId);
     
     saveDecks(decks);
-    PERSISTENT_DECKS = decks; // Met à jour l'état global
+    PERSISTENT_DECKS = decks;
     closeModal(DOM.editCardModal);
     
     regenerateAllDynamicContent();
-    showAllSoluce(); // Reste sur la page Admin
+    // MODIFICATION: Reste sur Admin en mode édition
+    showAllSoluce();
   };
 
-  // Étape 2: Afficher la modale de confirmation
   showConfirm(
     "Supprimer la carte",
-    "Êtes-vous sûr de vouloir supprimer cette carte ? Cette action est irréversible.",
+    "Êtes-vous sûr ? Action irréversible.",
     onConfirmDelete
   );
 }
@@ -1220,15 +1090,13 @@ function openDeckModal(deckIndex = null) {
   DOM.editDeckId.value = '';
 
   if (deckIndex === null) {
-    // MODE AJOUT
-    DOM.deckModalTitle.textContent = "Créer un nouveau Deck";
+    DOM.deckModalTitle.textContent = "Créer un Deck";
     DOM.deckNameInput.value = '';
     DOM.deckEmojiInput.value = '';
     DOM.deckIndicatorLeftInput.value = 'GAUCHE';
     DOM.deckIndicatorRightInput.value = 'DROITE';
     DOM.deckColorSelector.querySelector('.color-swatch').classList.add('selected');
   } else {
-    // MODE ÉDITION
     DOM.deckModalTitle.textContent = "Modifier le Deck";
     const deckInfo = PERSISTENT_DECK_INFO[deckIndex];
     DOM.editDeckId.value = deckIndex;
@@ -1241,7 +1109,7 @@ function openDeckModal(deckIndex = null) {
     if (swatch) {
       swatch.classList.add('selected');
     } else {
-      DOM.deckColorSelector.querySelector('.color-swatch').classList.add('selected'); // Fallback
+      DOM.deckColorSelector.querySelector('.color-swatch').classList.add('selected');
     }
   }
   openModal(DOM.deckModal);
@@ -1257,8 +1125,7 @@ function saveDeckInfo() {
   const colorName = selectedColorEl ? selectedColorEl.getAttribute('data-color-name') : 'gray';
 
   if (!name || !emoji || !indicatorLeft || !indicatorRight) {
-    // REMPLACEMENT: alert -> showAlert
-    showAlert("Formulaire incomplet", "Veuillez remplir tous les champs.", "warning");
+    showAlert("Formulaire incomplet", "Remplissez tous les champs.", "warning");
     return;
   }
 
@@ -1278,12 +1145,10 @@ function saveDeckInfo() {
   const deckIndexToEdit = DOM.editDeckId.value;
 
   if (deckIndexToEdit !== "") {
-    // MODE ÉDITION
     info[parseInt(deckIndexToEdit)] = newDeckInfo;
   } else {
-    // MODE AJOUT
     info.push(newDeckInfo);
-    decks.push([]); // Ajoute un tableau vide pour les cartes
+    decks.push([]);
   }
 
   saveDeckInfoToStorage(info);
@@ -1294,13 +1159,11 @@ function saveDeckInfo() {
   
   regenerateAllDynamicContent();
   closeModal(DOM.deckModal);
-  showAllSoluce(); // Reste sur la page Admin
+  // MODIFICATION: Reste sur Admin en mode édition
+  showAllSoluce();
 }
 
-// ------------------------------------
-// --- FONCTIONS UTILITAIRES & UI ---
-// ------------------------------------
-
+// --- UI & UTILITAIRES ---
 function updateUI() {
   DOM.scoreDisplay.textContent = state.game.score;
   const cardNum = Math.min(state.game.cardIndex + 1, MAX_CARDS);
@@ -1308,11 +1171,8 @@ function updateUI() {
   
   const finished = state.game.cardIndex >= MAX_CARDS;
   
-  // CORRECTION: Cache la carte et les flèches à la fin du jeu
   DOM.cardHolder.classList.toggle('hidden', finished);
   DOM.arrowBtnContainer.classList.toggle('hidden', finished);
-  
-  // Affiche ou cache l'écran de fin
   DOM.endOverlay.classList.toggle('hidden', !finished);
 }
 
@@ -1320,11 +1180,10 @@ function displayCard() {
   if (state.game.cardIndex < MAX_CARDS) {
     const cur = PERSISTENT_DECKS[state.currentDeck].find(c => c.id === state.currentDeckCards[state.game.cardIndex].id);
     
-    if (cur) { // Vérifie si la carte a été trouvée
+    if (cur) {
       DOM.cardImage.src = cur.img;
       DOM.cardText.textContent = cur.text;
     } else {
-      // Fallback si la carte a été supprimée pendant le jeu
       DOM.cardImage.src = neutralImg;
       DOM.cardText.textContent = "Erreur - Carte non trouvée";
     }
@@ -1333,7 +1192,9 @@ function displayCard() {
     DOM.cardElement.style.opacity = '1';
     DOM.cardElement.classList.remove('slide-out-left', 'slide-out-right');
     
-    DOM.cardElement.style.borderColor = 'rgba(255,255,255,0.04)'; 
+    // MODIFICATION: Pas de bordure colorée
+    // DOM.cardElement.style.borderColor = 'rgba(255,255,255,0.04)';
+    
     DOM.overlayLeft.style.opacity = '0';
     DOM.overlayRight.style.opacity = '0';
     
@@ -1353,13 +1214,13 @@ function displayCard() {
 function updateVisualFeedback(dx) {
   const opacityRatio = Math.min(1, Math.abs(dx) / 100); 
 
-  if (dx < 0) { // Glissement vers la gauche
+  if (dx < 0) {
     DOM.overlayLeft.style.opacity = (opacityRatio * 0.9).toString();
     DOM.overlayRight.style.opacity = '0';
     DOM.indicatorLeft.style.opacity = opacityRatio > 0.1 ? '1' : '0';
     DOM.indicatorRight.style.opacity = '0';
     DOM.indicatorLeft.style.transform = `translateY(-50%) translateX(${Math.min(0, 10 + dx / 5)}px)`;
-  } else if (dx > 0) { // Glissement vers la droite
+  } else if (dx > 0) {
     DOM.overlayRight.style.opacity = (opacityRatio * 0.9).toString();
     DOM.overlayLeft.style.opacity = '0';
     DOM.indicatorRight.style.opacity = opacityRatio > 0.1 ? '1' : '0';
@@ -1379,7 +1240,7 @@ function displayErrorRecap() {
   DOM.recapList.innerHTML = '';
   
   if (state.resultsRecap.length === 0) {
-    DOM.recapTitle.textContent = "Aucune carte jouée dans cette partie.";
+    DOM.recapTitle.textContent = "Aucune carte jouée.";
     return;
   }
 
@@ -1387,7 +1248,7 @@ function displayErrorRecap() {
 
   state.resultsRecap.forEach((playedCard) => {
     const card = PERSISTENT_DECKS[state.currentDeck].find(c => c.id === playedCard.id);
-    if (!card) return; // Ignore si la carte n'existe plus
+    if (!card) return;
     
     const status = playedCard.isCorrect ? 'success' : 'error';
     const statusText = playedCard.isCorrect ? 'RÉUSSIE' : 'ERREUR';
@@ -1397,13 +1258,12 @@ function displayErrorRecap() {
     
     const hasSoluceLink = card.soluceLink && card.soluceLink.trim() !== "";
     
-    // CORRECTION: Ajout du curseur et du listener pour tous les cas
     el.style.cursor = 'pointer';
     el.addEventListener('click', () => {
       if (hasSoluceLink) {
         window.open(card.soluceLink, '_blank');
       } else {
-        openModal(card.img); // Ajout du zoom
+        openModal(card.img);
       }
     });
 
@@ -1421,7 +1281,7 @@ function renderScores() {
   
   DOM.scoresList.innerHTML = '';
   if (filtered.length === 0) {
-    DOM.scoresList.innerHTML = '<div class="text-gray-300 text-center py-6">Aucun score enregistré.</div>';
+    DOM.scoresList.innerHTML = '<div class="text-gray-300 text-center py-6">Aucun score.</div>';
     return;
   }
   
@@ -1430,7 +1290,6 @@ function renderScores() {
     el.className = 'flex justify-between items-center p-3 bg-white/5 rounded-lg hover:bg-white/8 transition';
     const deckInfo = PERSISTENT_DECK_INFO[score.deck];
     const deckEmoji = score.deckEmoji || (deckInfo ? deckInfo.emoji : '❓');
-    // Sécurisation du nom du joueur
     const safePlayerName = (score.player || "Sans nom").replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     
     el.innerHTML = `
@@ -1472,14 +1331,12 @@ function saveScore(playerName, deckIndex, errors, percentage) {
   localStorage.setItem('game_scores', JSON.stringify(scores.slice(0, 100)));
 }
 
-// --- Fonctions Modales ---
+// --- MODALES ---
 function openModal(modalEl) {
   if (typeof modalEl === 'string') {
-    // C'est une URL d'image pour l'imageModal
     DOM.modalImage.src = modalEl;
     DOM.imageModal.classList.add('active');
   } else {
-    // C'est un élément modal
     modalEl.classList.add('active');
   }
 }
@@ -1500,25 +1357,15 @@ function isModalOpen() {
          DOM.passwordModal.classList.contains('active') || 
          DOM.editCardModal.classList.contains('active') ||
          DOM.deckModal.classList.contains('active') ||
-         DOM.alertModal.classList.contains('active'); // AJOUT
+         DOM.alertModal.classList.contains('active');
 }
 
-// ------------------------------------
-// --- NOUVELLES FONCTIONS D'ALERTE ---
-// ------------------------------------
-
-/**
- * Affiche une alerte non bloquante.
- * @param {string} title - Le titre de l'alerte.
- * @param {string} text - Le message de l'alerte.
- * @param {string} type - 'info' (défaut), 'success' (vert), 'warning' (orange), 'error' (rouge).
- */
+// --- ALERTES ---
 function showAlert(title, text, type = 'info') {
   DOM.alertModalTitle.textContent = title;
   DOM.alertModalText.textContent = text;
-  DOM.alertModalButtons.innerHTML = ''; // Vide les anciens boutons
+  DOM.alertModalButtons.innerHTML = '';
 
-  // Couleur du titre
   DOM.alertModalTitle.className = "text-2xl font-bold mb-4 ";
   switch (type) {
     case 'success':
@@ -1534,7 +1381,6 @@ function showAlert(title, text, type = 'info') {
       DOM.alertModalTitle.classList.add('text-white');
   }
 
-  // Bouton OK
   const okButton = document.createElement('button');
   okButton.textContent = "OK";
   okButton.className = "px-6 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold";
@@ -1544,31 +1390,23 @@ function showAlert(title, text, type = 'info') {
   openModal(DOM.alertModal);
 }
 
-/**
- * Affiche une confirmation non bloquante.
- * @param {string} title - Le titre de la confirmation.
- * @param {string} text - La question de confirmation.
- * @param {function} onConfirm - La fonction callback à exécuter si l'utilisateur confirme.
- */
 function showConfirm(title, text, onConfirm) {
   DOM.alertModalTitle.textContent = title;
   DOM.alertModalText.textContent = text;
-  DOM.alertModalButtons.innerHTML = ''; // Vide les anciens boutons
-  DOM.alertModalTitle.className = "text-2xl font-bold mb-4 text-white"; // Couleur par défaut
+  DOM.alertModalButtons.innerHTML = '';
+  DOM.alertModalTitle.className = "text-2xl font-bold mb-4 text-white";
 
-  // Bouton Annuler
   const cancelButton = document.createElement('button');
   cancelButton.textContent = "Annuler";
   cancelButton.className = "px-6 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg font-semibold";
   cancelButton.onclick = () => closeModal(DOM.alertModal);
   
-  // Bouton Confirmer (rouge pour indiquer une action destructive)
   const confirmButton = document.createElement('button');
   confirmButton.textContent = "Confirmer";
   confirmButton.className = "px-6 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold";
   confirmButton.onclick = () => {
     closeModal(DOM.alertModal);
-    onConfirm(); // Exécute le callback
+    onConfirm();
   };
   
   DOM.alertModalButtons.appendChild(cancelButton);
@@ -1576,7 +1414,7 @@ function showConfirm(title, text, onConfirm) {
   openModal(DOM.alertModal);
 }
 
-// --- Autres Utilitaires ---
+// --- UTILITAIRES ---
 function shuffleArray(array) {
   const newArray = [...array]; 
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -1589,21 +1427,18 @@ function shuffleArray(array) {
 function getResultMessage(errorPercent) {
   const deckIndex = state.currentDeck;
   const deckMessages = [
-    // Deck 0: Classic
     {
       0: { text: "PERFECT! ZERO ERREUR", color: "bg-green-600" },
       100: { text: "100% GAY", color: "bg-pink-600" },
       50: { text: "UN TROU C UN TROU", color: "bg-purple-600" },
       default: { text: "PETIT CURIEUX", color: "bg-blue-600" }
     },
-    // Deck 1: Hardcore
     {
       0: { text: "Intello du PC!", color: "bg-green-600" },
       100: { text: "100% Consoleux", color: "bg-red-600" },
       50: { text: "Gamer du dimanche", color: "bg-yellow-600" },
       default: { text: "Connaisseur", color: "bg-blue-600" }
     },
-    // Deck 2: Cosplay
     {
       0: { text: "Maître du déguisement", color: "bg-green-600" },
       100: { text: "A besoin d'une-up", color: "bg-red-600" },
@@ -1613,7 +1448,6 @@ function getResultMessage(errorPercent) {
   ];
   
   const messages = deckMessages[deckIndex] || {
-    // Fallback pour les nouveaux decks
     0: { text: "PARFAIT !", color: "bg-green-600" },
     50: { text: "Peut mieux faire", color: "bg-yellow-600" },
     default: { text: "Bien joué !", color: "bg-blue-600" }
