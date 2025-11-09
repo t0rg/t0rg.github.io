@@ -274,10 +274,10 @@ function initEventListeners() {
   // Jeu
   DOM.btnQuitGame.addEventListener('click', quitGame);
   
-  // CORRECTION: L'événement 'click' a été déplacé vers onDragEnd pour 
-  // différencier un clic d'un glissement.
-  // DOM.cardElement.addEventListener('click', ...) // SUPPRIMÉ
-
+  // CORRECTION: L'événement 'click' est maintenant géré directement
+  // dans 'onDragEnd' pour éviter les conflits.
+  // DOM.cardElement.addEventListener('click', ...); // SUPPRIMÉ
+  
   DOM.btnArrowLeft.addEventListener('click', () => handleDecision('left'));
   DOM.btnArrowRight.addEventListener('click', () => handleDecision('right'));
   
@@ -752,7 +752,7 @@ function createSoluceCardVignette(card, deckInfo, deckIndex, isPublic = false) {
       openEditModal(deckIndex, card.id);
     } else if (hasSoluceLink) {
       window.open(card.soluceLink, '_blank');
-    } else if (card.img && !card.img.includes('placehold.co')) { // N'ouvre que les vraies images
+    } else {
       openModal(card.img);
     }
   });
@@ -965,13 +965,14 @@ function handleDecision(decision) {
 // ------------------------------------
 // --- LOGIQUE DE DRAG/SWIPE ---
 // ------------------------------------
+
 function onDragStart(e) {
   if (state.game.isProcessing || state.game.cardIndex >= MAX_CARDS || isModalOpen()) return;
 
   if (e.type === 'mousedown') {
     state.drag.isMouseDown = true;
     state.drag.startX = e.clientX;
-    e.preventDefault(); // Empêche la sélection de texte
+    e.preventDefault(); // CORRECTION: Ré-ajouté pour empêcher le drag natif de l'image
   } else { // touchstart
     state.drag.isDragging = true;
     state.drag.startX = e.touches[0].clientX;
@@ -999,16 +1000,10 @@ function onDragMove(e) {
   updateVisualFeedback(dx); 
 }
 
+// CORRECTION: La logique de onDragEnd est modifiée pour 
+// gérer le clic/tap directement.
 function onDragEnd(e) {
-  if (state.game.isProcessing || isModalOpen()) {
-    // Si une modale est ouverte, ou jeu en cours, reset
-    state.drag.isMouseDown = false;
-    state.drag.isDragging = false;
-    return;
-  }
-  
-  // S'assure qu'on était bien en train de glisser
-  if (!state.drag.isMouseDown && !state.drag.isDragging) return;
+  if (state.game.isProcessing || isModalOpen() || (!state.drag.isMouseDown && !state.drag.isDragging)) return;
 
   const isMouseUp = e.type === 'mouseup';
   if (isMouseUp) {
@@ -1021,27 +1016,24 @@ function onDragEnd(e) {
   const dx = state.drag.currentX - state.drag.startX;
   state.drag.startX = 0;
   
-  // Remet la transition
   DOM.cardElement.style.transition = 'transform .35s cubic-bezier(.22,.9,.27,1), opacity .35s, border-color .3s'; 
   updateVisualFeedback(0); 
-
-  // CORRECTION: Gère le clic
-  // Si le mouvement est très court (un clic ou un tap)
-  if (Math.abs(dx) < 10) {
-    // C'est un clic
+  
+  // CORRECTION: Si le mouvement est faible, c'est un clic/tap.
+  if (Math.abs(dx) < 10) { 
     DOM.cardElement.style.transform = 'none'; // Snap back
     
-    // Déclenche le zoom manuellement (ce que faisait l'ancien 'click')
+    // Déclenche le zoom manuellement pour mouseup ET touchend
     if (DOM.cardImage.src && !DOM.cardImage.src.includes('placehold.co')) {
       openModal(DOM.cardImage.src);
     }
-    return; // Ne pas traiter comme un swipe
+    return;
   }
   
-  // C'est un swipe
+  // Si le mouvement est suffisant, c'est un swipe
   if (dx > SWIPE_THRESHOLD) handleDecision('right');
   else if (dx < -SWIPE_THRESHOLD) handleDecision('left');
-  else DOM.cardElement.style.transform = 'none'; // Pas assez glissé, snap back
+  else DOM.cardElement.style.transform = 'none';
 }
 
 function onKeyDown(e) {
@@ -1390,12 +1382,16 @@ function displayErrorRecap() {
     el.className = `result-vignette ${status} flex flex-col items-center justify-between`;
     
     const hasSoluceLink = card.soluceLink && card.soluceLink.trim() !== "";
-    if (hasSoluceLink) {
-      el.style.cursor = 'pointer';
-      el.addEventListener('click', () => {
+    
+    // CORRECTION: Ajout du curseur et du listener pour tous les cas
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', () => {
+      if (hasSoluceLink) {
         window.open(card.soluceLink, '_blank');
-      });
-    }
+      } else {
+        openModal(card.img); // Ajout du zoom
+      }
+    });
 
     el.innerHTML = `
       <img src="${card.img}" alt="${statusText}" onerror="this.onerror=null;this.src='https://placehold.co/100x60/${status === 'success' ? '10B981' : 'EF4444'}/FFFFFF?text=${statusText}';" />
